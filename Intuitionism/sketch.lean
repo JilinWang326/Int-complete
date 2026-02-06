@@ -1,9 +1,9 @@
 import Mathlib
-import MyNewProject.Intuitionism.fin_seq
-import MyNewProject.Intuitionism.fan
-import MyNewProject.Intuitionism.IPC
-import MyNewProject.Intuitionism.Enumeration
-import MyNewProject.Intuitionism.VeldmanConcrete
+import Intuitionism.fin_seq
+import Intuitionism.fan
+import Intuitionism.IPC
+import Intuitionism.Enumeration
+import Intuitionism.VeldmanConcrete
 
 open NatSeq
 open fin_seq

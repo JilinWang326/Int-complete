@@ -65,7 +65,7 @@ theorem imp_eq_trans (a b c : 𝒩) (n : ℕ)
 theorem lt_eq_lt_le (a b : 𝒩) (n m : ℕ)
     (h1 : ∀ i : ℕ, i < n → a i = b i) (h2 : a m < b m) :
     n ≤ m := by
-  rcases le_or_lt n m with nlem | ngtm
+  rcases le_or_gt n m with nlem | ngtm
   · exact nlem
   · exfalso
     have aibi := h1 m ngtm
@@ -75,7 +75,7 @@ theorem lt_eq_lt_le (a b : 𝒩) (n m : ℕ)
 theorem lt_eq_ne_le (a b : 𝒩) (n m : ℕ)
     (h1 : ∀ i : ℕ, i < n → a i = b i) (h2 : a m ≠ b m) :
     n ≤ m := by
-  rcases h2.lt_or_lt with hlt | hgt
+  rcases h2.lt_or_gt with hlt | hgt
   · exact lt_eq_lt_le a b n m h1 hlt
   · rw [imp_eq_iff_imp_eq] at h1
     exact lt_eq_lt_le b a n m h1 hgt
@@ -181,7 +181,7 @@ theorem seq_lt_cotrans (a b : 𝒩) (h : a < b) : ∀ c : 𝒩, a < c ∨ c < b 
         exact imp_eq_trans c a b n all_eq hnl
       · exact cnbn
   · obtain ⟨i, hil, him, hir⟩ := exists_neq
-    rcases hir.lt_or_lt with ailtci | aigtci
+    rcases lt_or_lt_iff_ne.mpr hir with ailtci | aigtci
     · left
       exact ⟨i, him, ailtci⟩
     · right
@@ -202,7 +202,7 @@ theorem le_iff_not_lt' (a b : 𝒩) : a ≤ b ↔ ¬ b < a := by
     have aleb := g' ind
     exact Nat.lt_irrefl _ (Nat.lt_of_lt_of_le blta aleb)
   · intro h n hi
-    rcases le_or_lt (a n) (b n) with hle | hgt
+    rcases le_or_gt (a n) (b n) with hle | hgt
     · exact hle
     · exfalso
       apply h
@@ -266,7 +266,7 @@ theorem apart_iff_lt_or_lt (a b : 𝒩) : a # b ↔ a < b ∨ b < a := by
   · intro ab
     obtain ⟨n, hn⟩ := ab
     rcases all_eq_or_exists_neq a b n with all_eq | exists_neq
-    · rcases hn.lt_or_lt with ab' | ba
+    · rcases lt_or_lt_iff_ne.mpr hn with ab' | ba
       · left
         exact ⟨n, all_eq, ab'⟩
       · right
@@ -276,7 +276,7 @@ theorem apart_iff_lt_or_lt (a b : 𝒩) : a # b ↔ a < b ∨ b < a := by
           exact all_eq
         · exact ba
     · obtain ⟨i, _, ajbj, aineqbi⟩ := exists_neq
-      rcases aineqbi.lt_or_lt with aibi | biai
+      rcases lt_or_lt_iff_ne.mpr aineqbi with aibi | biai
       · left
         exact ⟨i, ajbj, aibi⟩
       · right
@@ -296,7 +296,7 @@ theorem apart_cotrans (a b : 𝒩) (h : a # b) : ∀ c : 𝒩, a # c ∨ c # b :
   rcases h with ab | ba
   · -- ab : a < b
     rcases seq_lt_cotrans a b ab c with ac | cb
-    · 
+    ·
       left
       rw [apart_iff_lt_or_lt]
       left

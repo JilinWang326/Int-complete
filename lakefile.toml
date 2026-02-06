@@ -1,11 +1,11 @@
-name = "MyNewProject"
+name = "Intuitionism"
 version = "0.1.0"
-defaultTargets = ["MyNewProject"]
+defaultTargets = ["Intuitionism"]
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
 
 [[lean_lib]]
-name = "MyNewProject"
+name = "Intuitionism"
 

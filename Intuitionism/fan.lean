@@ -1,7 +1,7 @@
 import Mathlib
-import MyNewProject.Intuitionism.bcp
-import MyNewProject.Intuitionism.fin_seq
-import MyNewProject.Intuitionism.IPC
+import Intuitionism.bcp
+import Intuitionism.fin_seq
+import Intuitionism.IPC
 open NatSeq
 open fin_seq
 

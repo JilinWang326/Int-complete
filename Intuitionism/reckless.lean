@@ -1,6 +1,6 @@
 import Mathlib
-import MyNewProject.Intuitionism.nat_seq
-import MyNewProject.Intuitionism.real
+import Intuitionism.nat_seq
+import Intuitionism.real
 
 namespace reckless
 

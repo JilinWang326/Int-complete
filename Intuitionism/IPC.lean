@@ -1,4 +1,4 @@
-import Mathlib.Data.Set.Basic
+import Mathlib.Data.Set.Lattice
 
 namespace IPC
 

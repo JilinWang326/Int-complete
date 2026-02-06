@@ -1,7 +1,7 @@
 import Mathlib
-import MyNewProject.Intuitionism.fin_seq
-import MyNewProject.Intuitionism.fan
-import MyNewProject.Intuitionism.IPC
+import Intuitionism.fin_seq
+import Intuitionism.fan
+import Intuitionism.IPC
 
 
 namespace IPC
@@ -139,4 +139,3 @@ lemma sched_align (n m : ℕ) :
   symm
   rw[← Nat.add_assoc]
   rw[← Nat.add_assoc]
-

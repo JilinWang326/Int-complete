@@ -1,6 +1,6 @@
 import Mathlib
 
-import MyNewProject.Intuitionism.fin_seq
+import Intuitionism.fin_seq
 
 open fin_seq
 open len_seq

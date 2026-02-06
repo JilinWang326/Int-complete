@@ -1,4 +1,4 @@
-import MyNewProject.Intuitionism.segment
+import Intuitionism.segment
 import Mathlib
 set_option maxHeartbeats 10000000
 /--

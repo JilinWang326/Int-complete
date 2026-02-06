@@ -82,24 +82,22 @@ lemma le_iff_not_lt (s t : 𝕊) : s ≤ t ↔ ¬ t < s := by
   constructor
   · -- need to prove: s ≤ t → ¬ t < s
     intro h
-    apply not_lt_of_le
+    apply not_lt_of_ge
     exact h
   · -- need to prove: ¬ t < s → s ≤ t
     intro h
-    apply le_of_not_lt
+    apply le_of_not_gt
     exact h
 
 lemma lt_iff_not_le (s t : 𝕊) : s < t ↔ ¬ t ≤ s := by
   constructor
   · -- need to prove: s < t → ¬ t ≤ s
     intro h
-    apply not_le_of_lt
+    apply not_le_of_gt
     exact h
   · -- need to prove: ¬ t ≤ s → s < t
     intro h
-    apply lt_of_not_ge
-    rw [ge_iff_le]
-    exact h
+    exact lt_of_not_ge h
 
 @[trans] theorem lt_trans (s t v : 𝕊) (h₁ : s < t) (h₂ : t < v) : s < v := by
   have ht := s.2 -- s.property

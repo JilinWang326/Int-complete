@@ -687,8 +687,7 @@ theorem truth_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules V)
             a P Q (impData a P Q)
         exact hIff.2 hRHS
 
-      · intro hMem
-        intro b hbW haW hRel hb_forcesP
+      · intro hMem b hbW haW hRel hb_forcesP
         have hab : Gamma V a ⊆ Gamma V b := by
           simpa [U, leU] using hRel
 

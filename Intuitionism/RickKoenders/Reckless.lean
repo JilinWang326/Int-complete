@@ -357,7 +357,7 @@ def snap (a : 𝒩) : ℛ :=
 
           · -- h1 true, h2 false : inclusion ⊑ two_sided_inclusion
             have hs1 := Nat.find_spec h1
-            simp [h1, h2, seq]
+            simp [h1, h2]
 
             dsimp [segment.contained, segment.inclusion, segment.two_sided_inclusion,
               segment.fst, segment.snd]
@@ -430,7 +430,7 @@ def snap (a : 𝒩) : ℛ :=
             refine ⟨i, ?_, hai⟩
             exact Nat.le_trans hi (Nat.le_succ n)
           · -- h1 false, h2 false : two_sided_inclusion_contained
-            simp [h1, h2, seq]
+            simp [h1, h2]
             apply segment.two_sided_inclusion_contained
             have ha : (0 : ℚ) < (Nat.succ (n + 1) : ℚ) := by
               exact_mod_cast Nat.succ_pos (n + 1)
@@ -527,7 +527,7 @@ theorem reckless_LPO_real_lt_eq_gt :
             simpa using (one_div_pos.mpr this)
           have hsnd_nonneg : (0 : ℚ) ≤ segment.snd ((snap a).seq n) := by
 
-            simp [snap, real_seq.seq, h0, segment.inclusion, segment.snd, segment.fst]
+            simp [snap, real_seq.seq, h0, segment.inclusion, segment.snd]
 
             have : (0 : ℚ) ≤ (↑(Nat.find h0) + 1 : ℚ) := by
               exact add_nonneg (Nat.cast_nonneg _) (by norm_num)
@@ -539,7 +539,7 @@ theorem reckless_LPO_real_lt_eq_gt :
               exact_mod_cast Nat.succ_pos n
             simpa using (one_div_pos.mpr this)
           have hsnd_nonneg : (0 : ℚ) ≤ segment.snd ((snap a).seq n) := by
-            simp [snap, real_seq.seq, h0, segment.two_sided_inclusion, segment.snd, segment.fst]
+            simp [snap, real_seq.seq, h0, segment.two_sided_inclusion, segment.snd]
             have : (0 : ℚ) ≤ (↑n + 1 : ℚ) := by
               exact add_nonneg (Nat.cast_nonneg _) (by norm_num)
 
@@ -596,7 +596,7 @@ theorem reckless_LPO_real_lt_eq_gt :
               have hfst_le0 : segment.fst ((snap a).seq n) ≤ 0 := by
                 -- fst(two_sided_inclusion r) = -r ≤ 0
                 simp [snap, real_seq.seq, h0, segment.two_sided_inclusion,
-                  segment.fst, segment.snd]
+                  segment.fst]
                 have : (0 : ℚ) ≤ (↑n + 1 : ℚ) := by
                   exact add_nonneg (Nat.cast_nonneg _) (by norm_num)
                 have hinv : (0 : ℚ) ≤ (↑n + 1 : ℚ)⁻¹ := inv_nonneg.2 this
@@ -733,7 +733,7 @@ theorem weak_LPO_implies_LLPO : WLPO → LLPO := by
                       exfalso
                       apply hex
                       refine ⟨k, hLt, hk.2⟩
-              simp [hex, han]
+              simp [han]
           · -- n%2≠0 -> d n = 0
             simp [hn0]
       apply nd
@@ -763,7 +763,7 @@ theorem weak_LPO_implies_LLPO : WLPO → LLPO := by
                   apply hex
                   refine ⟨k, hLt, ?_⟩
                   exact hk.2
-          simp [hex, han]
+          simp [han]
       · -- n%2≠0 -> d n =0
         simp [hn0]
 
@@ -896,8 +896,7 @@ theorem reckless_LLPO_not_not_implies_or :
     have hp := h (¬ P)
     -- (¬¬¬P → ¬P)
     have : (¬¬ (¬ P) → ¬ P) := by
-      intro nnp
-      intro p
+      intro nnp p
       exact nnp (by intro np; exact np p)
     exact hp this
 

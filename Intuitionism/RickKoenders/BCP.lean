@@ -27,7 +27,7 @@ lemma exists_start_eq_ne (a : 𝒩) (n : ℕ) :
     simp [b, hi]
   · have hn : ¬ n < n := Nat.lt_irrefl n
     -- b n = a n + 1, so a n ≠ b n
-    simp [b, hn]
+    simp [b]
 
 /--
 Using BCP, a function f : 𝒩 → ℕ can never be injective, in a strong sense:
@@ -238,7 +238,7 @@ theorem BCP_implies_not_LPO : BCP → ¬ reckless.LPO := by
       have hb_m : b m = 0 := hb0 m
       have hb_m' : b m = 1 := by
         have h : ¬ m < m := Nat.lt_irrefl m
-        simp [b, h]
+        simp [b]
       have : (1 : ℕ) = 0 := by
         calc
           (1 : ℕ) = b m := hb_m'.symm
@@ -284,7 +284,7 @@ theorem BCP_implies_not_WLPO : BCP → ¬ reckless.WLPO := by
       have hb_m : b m = 0 := hb0 m
       have hb_m' : b m = 1 := by
         have h : ¬ m < m := Nat.lt_irrefl m
-        simp [b, h]
+        simp [b]
       have : (1 : ℕ) = 0 := by
         calc
           (1 : ℕ) = b m := hb_m'.symm

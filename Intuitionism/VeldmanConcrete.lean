@@ -205,7 +205,7 @@ Behavior:
 - only when decK = k0 do we search for a witness; otherwise return false.
 -/
 def Forced0b (E : Enumerations) (st : State) : Bool :=
-  if hk : decK st.t = k0 then
+  if decK st.t = k0 then
     anyUpTo st.t (fun i =>
       decide ((E.d i).2 = E.W (decN st.t) ∧ (E.d i).1 ⊆ st.Fs))
   else
@@ -229,9 +229,9 @@ Here `FStep` computes “the next Fs = Γ(extend s q)”:
 def FStep (E : Enumerations) (st : State) (q : ℕ) : Finset Form :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if k = k0 then
     if q = 1 then insert (E.W n) st.Fs else st.Fs
-  else if hk1 : k = k1 then
+  else if k = k1 then
     st.Fs
   else
     match E.W n with
@@ -261,12 +261,12 @@ Correspondence (simplified for the propositional version):
 def AllowedStepb (E : Enumerations) (st : State) (q : ℕ) : Bool :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if k = k0 then
     if Forced0b E st then
       decide (q = 1)
     else
       decide (q = 0 ∨ q = 1)
-  else if hk1 : k = k1 then
+  else if k = k1 then
     decide (q = 0)
   else
     match E.W n with
@@ -487,31 +487,31 @@ lemma FStep_mono (E : Enumerations) (st : State) (q : ℕ) :
     by_cases hq : q = 1
     · subst hq
       exact Finset.subset_insert _ _
-    · simp [hq, Finset.Subset.rfl]
+    · simp [hq]
   · by_cases hk1 : decK st.t = k1
     · have hk10 : (k1 : Fin 3) ≠ k0 := by decide
-      simp [hk0, hk1, hk10]
+      simp [hk1, hk10]
     · simp [hk0, hk1]
       cases hW : E.W (decN st.t) with
       | or A B =>
           by_cases hp : st.prev2 = 1
-          · simp [hW, hp]
+          · simp [hp]
             by_cases hq1 : q = 1
             · subst hq1
               exact Finset.subset_insert _ _
             · by_cases hq2 : q = 2
               · subst hq2
                 exact Finset.subset_insert _ _
-              · simp [hq1, hq2, Finset.Subset.rfl]
-          · simp [hW, hp, Finset.Subset.rfl]
+              · simp [hq1, hq2]
+          · simp [hp]
       | atom n =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | «I» =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | imp p q =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | and p q =>
-          simp [hW, Finset.Subset.rfl]
+          simp
 
 /-- After one `step`, Fs is monotone (only grows) -/
 lemma step_Fs_mono (E : Enumerations) (st : State) (q : ℕ) :
@@ -553,7 +553,7 @@ Uses: `Sigma`, `Admittedb`.
 lemma Sigma_eq_zero_iff (E : Enumerations) (s : fin_seq) :
     Sigma E s = 0 ↔ Admittedb E s = true := by
   unfold Sigma
-  cases hs : Admittedb E s <;> simp [hs]
+  cases hs : Admittedb E s <;> simp
 
 
 /-
@@ -575,7 +575,7 @@ lemma Prefix_child (s : fin_seq) (q : ℕ) : Prefix s (extend s (singleton q)) :
   intro i
   have hi : (Fin.castLE (Nat.le_add_right s.len 1) i).val < s.len := by
     simp
-  simp [fin_seq.extend, hi]
+  simp [fin_seq.extend]
 
 /-- The last element of extend s [q] is q -/
 lemma extend_singleton_last (s : fin_seq) (q : ℕ) :
@@ -584,7 +584,7 @@ lemma extend_singleton_last (s : fin_seq) (q : ℕ) :
         simp [fin_seq.extend, fin_seq.singleton]⟩
     = q := by
   have hnot : ¬ (s.len < s.len) := Nat.lt_irrefl _
-  simp [fin_seq.extend, fin_seq.singleton, hnot, Nat.sub_self]
+  simp [fin_seq.extend, fin_seq.singleton]
 
 /-
 §3.1: “constructive choice” used to prove spreadness
@@ -595,9 +595,9 @@ This provides the witness for “there exists an extendable branch” in the spr
 def chooseNext (E : Enumerations) (st : State) : ℕ :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if k = k0 then
     if Forced0b E st then 1 else 0
-  else if hk1 : k = k1 then
+  else if k = k1 then
     0
   else
     match E.W n with
@@ -617,9 +617,9 @@ lemma Allowed_chooseNext (E : Enumerations) (st : State) :
   · simp [hk0]
   · by_cases hk1 : decK st.t = k1
     · have hk10 : (k1 : Fin 3) ≠ k0 := by decide
-      simp [hk0, hk1, hk10]
+      simp [hk1, hk10]
     · simp [hk0, hk1]
-      cases hW : E.W (decN st.t) <;> simp [hW]
+      cases hW : E.W (decN st.t) <;> simp
       · by_cases hp : st.prev2 = 1 <;> simp [hp]
 
 
@@ -712,7 +712,7 @@ lemma Sigma_spread_iff (E : Enumerations) (s : fin_seq) :
 
       have hAuxSucc :
           admittedAuxb E child s.len.succ hnChild = true := by
-        simp [admittedAuxb, hnChild, hChildAux0, hAllowedChild]
+        simp [admittedAuxb, hChildAux0, hAllowedChild]
 
       simpa [Admittedb, child, fin_seq.extend, fin_seq.singleton] using hAuxSucc
 
@@ -780,7 +780,7 @@ lemma AllowedStepb_bound (E : Enumerations) (st : State) (q : ℕ) :
     · simp [hF] at h
       rcases h with rfl | rfl <;> decide
   by_cases hk1 : decK st.t = k1
-  · simp [hk0, hk1] at h
+  · simp [hk1] at h
     subst h
     decide
   · simp [hk0, hk1] at h

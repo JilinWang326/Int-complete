@@ -41,8 +41,7 @@ theorem schedEncode_decode (t : ℕ) :
     schedEncode (schedDecode t) = t := by
   -- q := t/3, r := t%3, nm := unpair q, then pair (unpair q)=q
   -- and div_add_mod gives q*3 + r = t
-  simp [schedEncode, schedDecode, Nat.pair_unpair, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc,
-        Nat.div_add_mod]
+  simp [schedEncode, schedDecode, Nat.pair_unpair, Nat.div_add_mod]
 
 
 /-
@@ -62,11 +61,11 @@ theorem schedDecode_encode (x : ℕ × ℕ × Fin 3) :
     calc
       (3 * p + k.1) % 3 = (k.1 + 3 * p) % 3 := by
         -- commute the addition
-        simp [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+        simp [Nat.add_comm]
       _ = (k.1 % 3) := by
         -- (a + b*c) % b = a % b
         -- here b=3, a=k.1, c=p
-        simp [Nat.add_mul_mod_self_left, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc]
+        simp [Nat.mul_comm]
       _ = k.1 := by
         simp [Nat.mod_eq_of_lt hk]
 
@@ -74,12 +73,12 @@ theorem schedDecode_encode (x : ℕ × ℕ × Fin 3) :
   have hdiv : (3 * p + k.1) / 3 = p := by
     calc
       (3 * p + k.1) / 3 = (k.1 + 3 * p) / 3 := by
-        simp [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+        simp [Nat.add_comm]
       _ = (k.1 / 3 + p) := by
         -- (a + b*c) / b = a/b + c
         -- here b=3, a=k.1, c=p
         have h0 := (Nat.add_mul_mod_self_left k.1 3 p)
-        simp [Nat.mul_assoc, Nat.mul_comm, Nat.mul_left_comm]
+        simp [Nat.mul_comm]
         rw [Nat.add_mul_div_right (↑k) p (Nat.le.step (Nat.le.step Nat.le.refl))]
       _ = p := by
         simp [Nat.div_eq_of_lt hk]
@@ -131,7 +130,7 @@ lemma sched_align (n m : ℕ) :
     (schedEncode ⟨n, m, k0⟩ + 2 = schedEncode ⟨n, m, k1⟩ + 1) ∧
     (schedEncode ⟨n, m, k1⟩ + 1 = schedEncode ⟨n, m, k2⟩) := by
   constructor <;>
-    simp [schedEncode, k0, k1, k2, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+    simp [schedEncode, k0, k1, k2, Nat.add_comm]
   simp [Nat.pair]
   split_ifs
   symm

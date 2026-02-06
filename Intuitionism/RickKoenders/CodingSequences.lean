@@ -40,7 +40,7 @@ theorem decode_encode_len_seq :
     funext i
     cases i using Fin.cases with
     | zero =>
-        simp [encode_len_seq, decode_len_seq, tail, Nat.unpair_pair]
+        simp [encode_len_seq, decode_len_seq, Nat.unpair_pair]
     | succ j =>
         have htj :
             decode_len_seq n (encode_len_seq n tail) j = tail j := by
@@ -153,7 +153,7 @@ theorem encode_decode_fin_seq (n : ℕ) :
       have hcode :
           (len_seq_equiv_nat p.1).toFun ((len_seq_equiv_nat p.1).invFun p.2) = p.2 :=
         (len_seq_equiv_nat p.1).right_inv p.2
-      simp [decode_fin_seq, encode_fin_seq, p, hcode, Nat.pair_unpair]
+      simp [decode_fin_seq, encode_fin_seq, Nat.pair_unpair]
 
 /-- Final result: `fin_seq ≃ ℕ`. -/
 def fin_seq_equiv_of_nat : fin_seq ≃ ℕ :=

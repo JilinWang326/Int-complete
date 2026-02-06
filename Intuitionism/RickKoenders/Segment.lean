@@ -137,7 +137,7 @@ def add (s t : 𝕊) : 𝕊 :=
 lemma mk_eq_mk_iff (a b : ℚ × ℚ) (ha hb) : (⟨a, ha⟩ : 𝕊) = ⟨b, hb⟩ ↔ a = b := Subtype.mk_eq_mk
 
 theorem add_assoc (s t v : 𝕊) : add (add s t) v = add s (add t v) := by
-  apply Subtype.eq
+  apply Subtype.ext
   simp only [add]
   simp only [Prod.mk.injEq]
   constructor
@@ -162,7 +162,7 @@ lemma fst_add_comm {s t : 𝕊} : fst (add s t) = fst s + fst t := rfl
 lemma snd_add_comm {s t : 𝕊} : snd (add s t) = snd s + snd t := rfl
 
 theorem add_comm (s t : 𝕊) : add s t = add t s := by
-  apply Subtype.eq
+  apply Subtype.ext
   simp only [add]
   simp only [Prod.mk.injEq]
   constructor

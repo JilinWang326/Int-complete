@@ -189,7 +189,7 @@ lemma mono_r {A : Type u} {M : emodel A} :
       exact M.monoI w1 w2 hw1 hw2 h hR
   | imp p q ihp ihq =>
       intro w1 w2 hw1 hw2 h h12
-      intro w3 hw3 hw2' h23 hpw3
+            w3 hw3 hw2' h23 hpw3
       have h13 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 h12 h23
       exact h w3 hw3 hw1 h13 hpw3
   | and p q ihp ihq =>
@@ -220,7 +220,7 @@ lemma forces_of_explodes {A : Type u} (M : emodel A) :
       exact Or.inl (ihp w hw hi)
   | imp p q ihp ihq =>
       intro w hw hi
-      intro w' hw' hw'0 hww' hpw'
+            w' hw' hw'0 hww' hpw'
       have hi' : M.ival w' := M.monoI w w' hw hw' hi hww'
       exact ihq w' hw' hi'
 
@@ -232,12 +232,12 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       exact hΓ _ hmem
   | k =>
       intro w1 hw1 _ hww1 hpw1
-      intro w2 hw2 _ hw1w2 hqw2
+            w2 hw2 _ hw1w2 hqw2
       exact mono_r (M:=M) _ w1 w2 hw1 hw2 hpw1 hw1w2
   | s =>
       intro w1 hw1 _ hww1 hPQR
-      intro w2 hw2 _ hw1w2 hPQ
-      intro w3 hw3 _ hw2w3 hP
+            w2 hw2 _ hw1w2 hPQ
+            w3 hw3 _ hw2w3 hP
       have hw1w3 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 hw1w2 hw2w3
       have hQR : w3 ⊩{M} (_ ⊃ _) := hPQR w3 hw3 hw1 hw1w3 hP
       have hQ  := hPQ  w3 hw3 hw2 hw2w3 hP
@@ -256,7 +256,7 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       exact hpq.2
   | pair =>
       intro w1 hw1 _ hww1 hP
-      intro w2 hw2 _ hw1w2 hQ
+            w2 hw2 _ hw1w2 hQ
       have hP' := mono_r (M:=M) _ w1 w2 hw1 hw2 hP hw1w2
       exact And.intro hP' hQ
   | inr =>
@@ -267,8 +267,8 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       exact Or.inr hQ
   | case =>
       intro w1 hw1 _ hww1 hPR
-      intro w2 hw2 _ hw1w2 hQR
-      intro w3 hw3 _ hw2w3 hPorQ
+            w2 hw2 _ hw1w2 hQR
+            w3 hw3 _ hw2w3 hPorQ
       have hw1w3 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 hw1w2 hw2w3
       cases hPorQ with
       | inl hP => exact hPR w3 hw3 hw1 hw1w3 hP

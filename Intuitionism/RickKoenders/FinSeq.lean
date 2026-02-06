@@ -96,7 +96,7 @@ lemma eq_extend_inf {a₁ a₂ : fin_seq} {b : 𝒩} (h₁ : a₁.len = a₂.len
       have : n < a₁.len := by simpa [h₁] using g2
       exact this
     -- both sides take tail branch; lengths equal so n - len equal
-    simp [extend_inf, g₁, g₂, h₁]
+    simp [extend_inf, g₂, h₁]
 
 /-- The empty finite sequence. -/
 def empty_seq : fin_seq :=

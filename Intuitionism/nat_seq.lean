@@ -3,7 +3,7 @@ This file defines natural sequences, here defined as functions ℕ → ℕ
 Also defined here are the comparisons =, ≠, <, ≤ and #
 -/
 
-import Mathlib
+import Mathlib.Order.MinMax
 
 def NatSeq := ℕ → ℕ
 

@@ -1,4 +1,5 @@
-import Mathlib
+import Mathlib.Data.Rat.Defs
+import Mathlib.Tactic.Linarith
 
 -- Rational segments
 -- Each s in 𝕊 is a pair of rational numbers (p, q) such that p ≤ q
@@ -34,16 +35,13 @@ def le (s t : 𝕊) : Prop := fst s ≤ snd t
 infix:50 " ≤ " => le
 
 def inclusion (q : ℚ) : 𝕊 :=
-  ⟨(q, q), by rfl⟩
+  ⟨(q, q), by simp only [Rat.le_refl]⟩
 
 instance : Zero 𝕊 where
   zero := inclusion 0
 
 def two_sided_inclusion (q : ℚ) (hq : q > 0) : 𝕊 :=
-  ⟨(-q, q), by
-    simp
-    exact le_of_lt hq
-  ⟩
+  ⟨(-q, q), by linarith [hq]⟩
 
 lemma two_sided_inclusion_contained {q₁ q₂ : ℚ} {hq₁ : q₁ > 0} {hq₂ : q₂ > 0} (h : q₁ ≤ q₂) :
     two_sided_inclusion q₁ hq₁ ⊑ two_sided_inclusion q₂ hq₂ := by

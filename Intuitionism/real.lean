@@ -1,6 +1,6 @@
 import Intuitionism.segment
-import Mathlib
-set_option maxHeartbeats 10000000
+import Mathlib.Tactic.Ring
+-- set_option maxHeartbeats 10000000
 /--
 We say that a sequence of segments is 'shrinking' if each segment is contained within its predecessor
 -/

@@ -1,4 +1,3 @@
-import Mathlib
 import Intuitionism.fin_seq
 import Intuitionism.fan
 import Intuitionism.IPC

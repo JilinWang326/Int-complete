@@ -1,4 +1,4 @@
-import Mathlib
+import Mathlib.Data.Finset.Basic
 import Intuitionism.bcp
 import Intuitionism.fin_seq
 import Intuitionism.IPC

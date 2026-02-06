@@ -1,4 +1,3 @@
-import Mathlib
 import Intuitionism.fin_seq
 import Intuitionism.fan
 import Intuitionism.IPC
@@ -922,3 +921,6 @@ theorem semantic_completeness' {E : Enumerations}
   have hValidU : Valid (U V) A := by
     simpa using (hAllValid (M := U V))
   exact universal_model_completeness' (V := V) ctx A hValidU
+
+-- #print axioms universal_model_completeness
+-- #print axioms universal_model_completeness'

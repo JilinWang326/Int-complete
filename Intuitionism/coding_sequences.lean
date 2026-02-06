@@ -1,4 +1,4 @@
-import Mathlib
+import Mathlib.Data.Nat.Pairing
 
 import Intuitionism.fin_seq
 

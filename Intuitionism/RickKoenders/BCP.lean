@@ -1,5 +1,5 @@
-import Intuitionism.NatSeq
-import Intuitionism.Reckless
+import Intuitionism.RickKoenders.NatSeq
+import Intuitionism.RickKoenders.Reckless
 
 open NatSeq
 

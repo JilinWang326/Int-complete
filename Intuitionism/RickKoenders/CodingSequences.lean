@@ -1,6 +1,6 @@
 import Mathlib.Data.Nat.Pairing
 
-import Intuitionism.FinSeq
+import Intuitionism.RickKoenders.FinSeq
 
 open fin_seq
 open len_seq

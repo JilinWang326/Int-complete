@@ -1,7 +1,7 @@
 import Mathlib.Algebra.Order.Field.Basic        -- one_div_le_one_div
 import Mathlib.Algebra.Order.Archimedean.Basic  -- exists_nat_one_div_lt
-import Intuitionism.NatSeq
-import Intuitionism.Real
+import Intuitionism.RickKoenders.NatSeq
+import Intuitionism.RickKoenders.Real
 
 namespace reckless
 

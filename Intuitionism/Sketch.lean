@@ -1,5 +1,5 @@
-import Intuitionism.FinSeq
-import Intuitionism.Fan
+import Intuitionism.RickKoenders.FinSeq
+import Intuitionism.RickKoenders.Fan
 import Intuitionism.IPC
 import Intuitionism.Enumeration
 import Intuitionism.VeldmanConcrete

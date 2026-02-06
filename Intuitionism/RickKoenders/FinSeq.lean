@@ -1,4 +1,4 @@
-import Intuitionism.NatSeq
+import Intuitionism.RickKoenders.NatSeq
 
 open NatSeq
 

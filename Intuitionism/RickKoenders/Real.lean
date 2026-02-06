@@ -1,4 +1,4 @@
-import Intuitionism.Segment
+import Intuitionism.RickKoenders.Segment
 import Mathlib.Tactic.Ring
 -- set_option maxHeartbeats 10000000
 /--

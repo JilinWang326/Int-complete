@@ -1,6 +1,6 @@
 import Mathlib.Data.Nat.Pairing
-import Intuitionism.FinSeq
-import Intuitionism.Fan
+import Intuitionism.RickKoenders.FinSeq
+import Intuitionism.RickKoenders.Fan
 import Intuitionism.IPC
 
 

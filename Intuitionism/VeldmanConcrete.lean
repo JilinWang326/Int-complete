@@ -533,7 +533,7 @@ lemma runStateAux_Fs_mono_le (E : Enumerations) (s : fin_seq) :
   | refl =>
       have hEq : runStateAux E s n hn = runStateAux E s n hm :=
         runStateAux_proof_irrel (E := E) (s := s) n hn hm
-      simpa [hEq] using (Finset.subset_rfl : (runStateAux E s n hn).Fs ⊆ (runStateAux E s n hn).Fs)
+      simp only [hEq, subset_refl]
   | @step m hnm ih =>
       have hm' : m ≤ s.len := Nat.le_of_succ_le hm
       have ih' :

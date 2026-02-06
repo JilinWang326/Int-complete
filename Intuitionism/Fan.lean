@@ -1,6 +1,6 @@
 import Mathlib.Data.Finset.Basic
-import Intuitionism.bcp
-import Intuitionism.fin_seq
+import Intuitionism.BCP
+import Intuitionism.FinSeq
 import Intuitionism.IPC
 open NatSeq
 open fin_seq

@@ -1,5 +1,5 @@
-import Intuitionism.fin_seq
-import Intuitionism.fan
+import Intuitionism.FinSeq
+import Intuitionism.Fan
 import Intuitionism.IPC
 import Intuitionism.Enumeration
 

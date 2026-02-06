@@ -1,4 +1,4 @@
-import Intuitionism.nat_seq
+import Intuitionism.NatSeq
 
 open NatSeq
 

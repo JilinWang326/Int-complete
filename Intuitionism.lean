@@ -1,3 +1,3 @@
-import Intuitionism.sketch
+import Intuitionism.Sketch
 
 -- def hello := "world"

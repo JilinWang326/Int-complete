@@ -10,7 +10,7 @@ This file defines finite sequences from {0, ..., n} to ℕ
 @[ext] structure fin_seq where
   len : ℕ
   seq : Fin len → ℕ
-
+#print axioms fin_seq
 namespace fin_seq
 
 /-- Take the first `n` values of an infinite natural sequence as a `fin_seq`. -/
@@ -48,15 +48,16 @@ def extend (a b : fin_seq) : fin_seq :=
         rcases Nat.exists_eq_add_of_le ha with ⟨t, ht⟩
         have hi : a.len + t < a.len + b.len := by
           -- i.isLt : i.val < a.len + b.len
-          simpa [ht] using i.isLt
+
+          omega
         have htlt : t < b.len := Nat.lt_of_add_lt_add_left hi
         have hsub : i.val - a.len = t := by
           -- (a.len + t) - a.len = t
-          simp [ht]
+          simp only [ht, add_tsub_cancel_left]
         -- i.val - a.len < b.len
-        simpa [hsub] using htlt
+        simpa only [hsub, gt_iff_lt] using htlt
       ⟩⟩
-
+#print axioms extend
 /-- Extend a finite prefix `a` with an infinite tail `b`. -/
 def extend_inf (a : fin_seq) (b : 𝒩) : 𝒩 :=
   fun i =>

@@ -13,7 +13,7 @@ open fin_seq
 def is_spread_law (σ : fin_seq → ℕ) : Prop :=
   σ empty_seq = 0 ∧
     (∀ s : fin_seq, σ s = 0 ↔ ∃ n : ℕ, σ (extend s (singleton n)) = 0)
-
+#print axioms is_spread_law
 /-- Fan law:
     The paper does not give a separate definition of “fan law”, but §3.1 mentions the binary fan,
     and §4.1 uses the fan theorem to extract a uniform bound on a (sub)fan.
@@ -23,7 +23,7 @@ def is_fan_law (β : fin_seq → ℕ) : Prop :=
   is_spread_law β ∧
     (∀ s : fin_seq,
       (β s = 0 → ∃ n : ℕ, ∀ m : ℕ, β (extend s (singleton m)) = 0 → m ≤ n))
-
+#print axioms is_fan_law
 /-- This is purely extracting the first component of `is_fan_law` (fan ⇒ spread). -/
 lemma fan_law_is_spread_law (β : fin_seq → ℕ) (hβ : is_fan_law β) : is_spread_law β :=
   hβ.1

@@ -1,4 +1,5 @@
 import Mathlib.Data.Set.Lattice
+import Mathlib.Data.Finset.Basic
 
 namespace IPC
 
@@ -342,5 +343,7 @@ lemma theory_mp_mem
   have hq' : Γ ⊢ᵢ q := by
     exact prf.mp hpq' hp'
   exact hT hq'
+
+
 
 end IPC

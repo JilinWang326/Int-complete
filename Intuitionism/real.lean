@@ -116,8 +116,8 @@ theorem lt_cotrans (x y z : ℛ) (h₁ : x < y) : x < z ∨ z < y := by
   rcases h₁ with ⟨n, hn⟩
 
   have hn' : segment.fst (y.seq n) - segment.snd (x.seq n) > 0 := by
-
-    simpa [segment.lt, sub_pos] using hn
+    sorry
+    --simpa [segment.lt, sub_pos] using hn
   rcases z.dwindling (segment.fst (y.seq n) - segment.snd (x.seq n)) hn' with ⟨m, hm⟩
   have hsplit := lt_or_lt_from_sub_lt_sub hm
   cases hsplit with

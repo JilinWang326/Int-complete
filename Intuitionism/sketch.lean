@@ -37,6 +37,7 @@ structure Enumerations where
   d_complete :
       ∀ (Γ : Finset Form) (A : Form),
         ((↑Γ : Set Form) ⊢ᵢ A) → ∃ i : ℕ, d i = (Γ, A)
+  #print axioms Enumerations
 
 --------------------------------------------------------------------------------
 
@@ -61,7 +62,7 @@ structure VeldmanFan (E : Enumerations) where
   F : CompLaw S
   F_empty : F empty_seq = ∅
   F_mono : MonotoneOnAdmitted S F
-
+  #print axioms VeldmanFan
 /-- In paper §3.32, Σ(<>) = 0 (the empty sequence is admitted). -/
 lemma Sigma_empty {E : Enumerations} (V : VeldmanFan E) : V.S empty_seq = 0 := by
   exact (V.hS.1).1
@@ -378,7 +379,7 @@ theorem ind_step_of_rules {E : Enumerations} (V : VeldmanFan E)
           IPC.prf.or_elim (Γ := Δ) (p := A) (q := B) (r := Q) hAB hA hB
 
         simpa [Δ] using hQ
-
+#print axioms ind_step_of_rules
 end GammaRules
 
 
@@ -393,13 +394,13 @@ by
   refine ⟨b.1, ?_⟩
   intro n
   exact hsub (finitize b.1 n) (b.2 n)
-
+#print axioms toBranchOfSubfan
 @[simp] lemma toBranchOfSubfan_coe {E : Enumerations} (V : VeldmanFan E)
     {T : fin_seq → ℕ} (hT : is_fan_law T)
     (hsub : ∀ s : fin_seq, T s = 0 → V.S s = 0)
     (b : fan T hT) :
     (toBranchOfSubfan V hT hsub b).1 = b.1 := rfl
-
+#print axioms toBranchOfSubfan_coe
 --------------------------------------------------------------------------------
 
 /-!
@@ -455,7 +456,7 @@ structure ImpHardData {E : Enumerations} (V : VeldmanFan E)
       intro s hs0 hall
       exact
         ind_step_of_rules (V := V) (a := a) (W := W) (Q := Q) (T := T) stepRules s hs0 hall
-
+#print axioms ImpHardData
 namespace ImpHardData
 
 /-!
@@ -573,7 +574,7 @@ theorem gamma_imp_hard_skeleton {E : Enumerations}
     exact prf.deduction (Γ := Gamma V a) (a := W) (b := Q) h_goal
 
   exact hTa h_prf
-
+#print axioms gamma_imp_hard_skeleton
 -- (the rest of your code continues unchanged, with comments already in English or to be translated similarly)
 
 
@@ -612,7 +613,7 @@ theorem implication_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules
         (BarIndStd := BarIndStd) a W Q data
     exact hhard hcond
 
-
+#print axioms implication_lemma
 
 /-- If Γ is a theory and `I ∈ Γ`, then every formula belongs to Γ (explosion). -/
 lemma mem_of_I {Γ : Set Form} (hT : IsTheory Γ) (A : Form) :
@@ -922,3 +923,6 @@ theorem semantic_completeness' {E : Enumerations}
   have hValidU : Valid (U V) A := by
     simpa using (hAllValid (M := U V))
   exact universal_model_completeness' (V := V) ctx A hValidU
+#print axioms semantic_completeness'
+#check CompletenessCtx
+#check semantic_completeness'

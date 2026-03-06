@@ -100,7 +100,7 @@ theorem schedDecode_encode (x : ℕ × ℕ × Fin 3) :
   in Lean we package the “bijection” as the standard structure `Equiv`.
 -/
 /-- The equivalence (ℕ×ℕ×Fin3) ≃ ℕ. -/
-noncomputable def schedEquiv : (ℕ × ℕ × Fin 3) ≃ ℕ :=
+def schedEquiv : (ℕ × ℕ × Fin 3) ≃ ℕ :=
 { toFun := schedEncode
   invFun := schedDecode
   left_inv := schedDecode_encode

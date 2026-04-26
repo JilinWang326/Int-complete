@@ -3,7 +3,7 @@ import Intuitionism.VeldmanConcrete
 import Mathlib
 
 set_option maxRecDepth 2000
-set_option maxHeartbeats 0  -- 仅用于定位卡住点；定位完再撤掉
+set_option maxHeartbeats 0  -- Used only to diagnose stalled proofs; remove once the proof script is stable.
 /-!
 Todo B (propositional version): provide the `ImpHardData` needed for the implication-case
 of the truth lemma in `sketch.lean`, without changing the existing setup.
@@ -30,11 +30,6 @@ open NatSeq
 open fin_seq
 open IPC
 
-/-!
-Todo B (propositional version): provide the `ImpHardData` needed for the implication-case
-of the truth lemma in `sketch.lean`, without changing the existing setup.
--/
-
 namespace TodoB
 namespace VC
 open NatSeq fin_seq IPC
@@ -43,7 +38,7 @@ export IPC.VeldmanConcrete
   ( Enumerations
     Sigma Sigma_is_fan_law
     FS FS_empty F_mono
-    -- 下面这些是你后面证明里常用的（按需增删）
+    -- The following exports are the concrete state-machine lemmas used repeatedly below.
     State initState
     decN decK
     Forced0 Forced0b
@@ -64,12 +59,12 @@ export IPC.VeldmanConcrete
   )
 end VC
 
-/-- `sketch.lean` 里的枚举类型（根命名空间）。 -/
+/-- The enumeration type from `sketch.lean` (root namespace version). -/
 abbrev ESk : Type := _root_.Enumerations
-/-- `VeldmanConcrete.lean` 里的枚举类型（在 `IPC.VeldmanConcrete` 里）。 -/
+/-- The enumeration type from `VeldmanConcrete.lean` (the `IPC.VeldmanConcrete` version). -/
 abbrev ECon : Type := VC.Enumerations
 
-/-- 把 sketch 的枚举数据“拷贝”成 concrete 的枚举数据（字段同名同型）。 -/
+/-- Copy the enumeration data from the abstract `sketch` namespace into the concrete namespace. -/
 def toConcreteEnum (E : ESk) : ECon :=
 { W := E.W
 , d := E.d
@@ -79,7 +74,7 @@ def toConcreteEnum (E : ESk) : ECon :=
 
 /-! ### The concrete fan as a `sketch.VeldmanFan` -/
 
-/-- 具体扇：把 `IPC.VeldmanConcrete.Sigma/FS` 作为 `sketch.VeldmanFan` 的 S/F。 -/
+/-- The concrete fan obtained by taking `IPC.VeldmanConcrete.Sigma/FS` as the `S/F` fields of `sketch.VeldmanFan`. -/
 
 def Vconcrete (E : ESk) : _root_.VeldmanFan E := by
   let E0 : ECon := toConcreteEnum E
@@ -88,11 +83,11 @@ def Vconcrete (E : ESk) : _root_.VeldmanFan E := by
     hS := VC.Sigma_is_fan_law E0
     F := VC.FS E0
     F_empty := by
-      -- 这里 goal 是 `VC.FS E0 empty_seq = ∅`（定义展开后就是这个）
+      -- The goal here is exactly `VC.FS E0 empty_seq = ∅` after unfolding definitions.
       simpa using (IPC.VeldmanConcrete.FS_empty (E := E0))
     F_mono := by
       intro s t hPre hs0 ht0
-      -- 显式把 s t 喂进去，避免 `simpa using` 留 metavars
+      -- Feed `s` and `t` explicitly to avoid leaving metavariables in `simpa using`.
       exact IPC.VeldmanConcrete.F_mono (E := E0) (s := s) (t := t) hPre hs0 ht0 }
 
 lemma runStateAux_t (E0 : ECon) (s : fin_seq) :
@@ -109,35 +104,39 @@ lemma runStateAux_t (E0 : ECon) (s : fin_seq) :
 lemma runState_t (E0 : VC.Enumerations) (s : fin_seq) :
     (VC.runState E0 s).t = s.len := by
   simpa [VC.runState] using (runStateAux_t (E0 := E0) (s := s) s.len le_rfl)
-/-- 给定 `n ≤ s.len` 且 `0 < n`，构造索引 `(n-1) : Fin s.len`。 -/
+
+
+/-- Given `n ≤ s.len` and `0 < n`, construct the index `(n-1) : Fin s.len`. -/
 def predIdx (s : fin_seq) (n : ℕ) (hn : n ≤ s.len) (hnpos : 0 < n) : Fin s.len := by
   cases n with
   | zero =>
       cases (Nat.lt_irrefl 0 hnpos)
   | succ k =>
-      -- n = k+1，所以 n-1 = k，并且 k < s.len
+      -- Here `n = k+1`, so `n-1 = k`, and therefore `k < s.len`.
       exact ⟨k, Nat.lt_of_lt_of_le (Nat.lt_succ_self k) hn⟩
 
 lemma runStateAux_prev1 (E0 : VC.Enumerations) (s : fin_seq) :
   ∀ n (hn : n ≤ s.len) (hnpos : 0 < n),
     (VC.runStateAux E0 s n hn).prev1 = s.seq (predIdx s n hn hnpos) := by
   intro n hn (hnpos : 0 < n)
-  -- 现在 hnpos 的类型已经锁死为 0 < n，不会再变成 ?m.1
+  -- At this point `hnpos` is fixed as a proof of `0 < n`; it will not drift into a metavariable proof.
   let i : Fin s.len := predIdx s n hn hnpos
   change (VC.runStateAux E0 s n hn).prev1 = s.seq i
-  -- 后面照你原来的 cases/simp 继续写
+  -- From here we continue with the intended `cases`/`simp` proof structure.
   cases n with
   | zero =>
       cases (Nat.lt_irrefl 0 hnpos)
   | succ k =>
-      simp [VC.runStateAux, VC.step, VC.initState, predIdx, i]
-      -- 如果 simp 卡在 Fin 证明不同上，再补：
+      simp [VC.runStateAux, VC.step, predIdx, i]
+      -- If `simp` gets stuck on different `Fin` proof terms, add the indicated `Fin.ext` step.
       -- · apply congrArg s.seq; apply Fin.ext; rfl
-/-- 你给的定义：n-2 的索引（用 omega 自动证明 n-2 < s.len）。 -/
+
+/-- The index `n-2 : Fin s.len`, with the bound discharged automatically by `omega`. -/
+
 def pred2Idx (s : fin_seq) (n : ℕ) (hn : n ≤ s.len) (hn2 : 2 ≤ n) : Fin s.len :=
   ⟨n - 2, by omega⟩
 
-/-- `runStateAux` 在第 n 步（n≥2）时的 `prev2` 恰好等于第 (n-2) 个 digit。 -/
+/-- At step `n` (with `n ≥ 2`), `runStateAux` stores in `prev2` exactly the digit at position `n-2`. -/
 lemma runStateAux_prev2 (E0 : VC.Enumerations) (s : fin_seq) :
     ∀ n (hn : n ≤ s.len) (hn2 : 2 ≤ n),
       (VC.runStateAux E0 s n hn).prev2
@@ -145,48 +144,51 @@ lemma runStateAux_prev2 (E0 : VC.Enumerations) (s : fin_seq) :
   intro n hn hn2
   cases n with
   | zero =>
-      -- 2 ≤ 0 不可能
+      -- `2 ≤ 0` is impossible.
       cases (by omega : False)
   | succ n =>
       cases n with
       | zero =>
-          -- 2 ≤ 1 不可能
+          -- `2 ≤ 1` is impossible.
           cases (by omega : False)
       | succ k =>
-          -- 现在原来的 n = k+2
-          -- 先从 hn : k+2 ≤ s.len 推出 hn1 : k+1 ≤ s.len
+          -- At this point the original `n` is `k+2`.
+          -- First derive `hn1 : k+1 ≤ s.len` from `hn : k+2 ≤ s.len`.
           have hn1 : k + 1 ≤ s.len := by
             exact Nat.le_trans (Nat.le_succ (k + 1)) hn
 
-          -- 第一步：展开 runStateAux 的 succ，prev2 会变成“前一状态的 prev1”
+          -- Step 1: unfold the successor clause of `runStateAux`; `prev2` becomes the previous state's `prev1`.
           have hstep :
               (VC.runStateAux E0 s (k + 2) hn).prev2
                 = (VC.runStateAux E0 s (k + 1) hn1).prev1 := by
-            -- runStateAux (n+1) = step st q，step 里 prev2 := st.prev1
+            -- Indeed, `runStateAux (n+1) = step st q`, and `step` sets `prev2 := st.prev1`.
             simp [VC.runStateAux, VC.step]
 
-          -- 第二步：展开前一状态的 prev1，它就是第 k 个 digit
+          -- Step 2: unfold the previous state's `prev1`; it is exactly the `k`-th digit.
           have hk_lt : k < s.len := by omega
           have hprev1 :
               (VC.runStateAux E0 s (k + 1) hn1).prev1
                 = s.seq ⟨k, hk_lt⟩ := by
             -- runStateAux (k+1) = step (runStateAux k) (s.seq k)
-            simp [VC.runStateAux, VC.step, hk_lt]
+            simp [VC.runStateAux, VC.step]
 
-          -- 第三步：把右边的 `⟨k, hk_lt⟩` 对齐到 `pred2Idx ...`
+          -- Step 3: align the right-hand `⟨k, hk_lt⟩` with `pred2Idx ...`.
+          have hk2 : 2 ≤ k + 2 := by omega
           have hFin :
-              (⟨k, hk_lt⟩ : Fin s.len) = pred2Idx s (k + 2) hn (by omega) := by
+              (⟨k, hk_lt⟩ : Fin s.len) = pred2Idx s (k + 2) hn hk2 := by
             apply Fin.ext
+            unfold pred2Idx
             -- (k+2)-2 = k
-            simp [pred2Idx]
+            show k = k + 2 - 2
+            omega
 
-          -- 合并
+          -- Now concatenate the three equalities.
           calc
             (VC.runStateAux E0 s (k + 2) hn).prev2
                 = (VC.runStateAux E0 s (k + 1) hn1).prev1 := hstep
             _   = s.seq ⟨k, hk_lt⟩ := hprev1
-            _   = s.seq (pred2Idx s (k + 2) hn (by omega)) := by
-                    simpa [hFin]
+            _   = s.seq (pred2Idx s (k + 2) hn hk2) := by
+                    simp [hFin]
 
 /-! ### A helper: extending `Sigma` by an allowed digit -/
 
@@ -224,13 +226,13 @@ lemma Sigma_extend_of_Allowed (E0 : VC.Enumerations) (s : fin_seq) (q : ℕ) :
       exact VC.runStateAux_proof_irrel (E := E0) (s := c) s.len _ _
     simpa [hpi] using hEq
 
-  have hDigit : c.seq ⟨s.len, by
-      simp [c, child, fin_seq.extend, fin_seq.singleton]⟩ = q := by
-    simpa [c, child] using VC.extend_singleton_last s q
+  have hDigit : c.seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = q := by
+    change (extend s (singleton q)).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = q
+    exact VC.extend_singleton_last s q
 
   have hAllowedChild :
       VC.AllowedStepb E0 (VC.runStateAux E0 c s.len hPred)
-        (c.seq ⟨s.len, by simp [c, child, fin_seq.extend, fin_seq.singleton]⟩) = true := by
+        (c.seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩) = true := by
     simpa [VC.runState, hStateEq, hDigit] using hAllowed
 
   have hcAux_succ :
@@ -244,13 +246,13 @@ lemma Sigma_extend_of_Allowed (E0 : VC.Enumerations) (s : fin_seq) (q : ℕ) :
 
 /-! ### The subfan law `T` (Todo B) -/
 
-/-- k0 时刻，且当前公式已在有限集合 F(α↾(t+1)) 中，或等于 W。全部可判定 → Bool。 -/
+/-- Boolean test for the `k0`-case: the scheduled formula is already in `F(α↾(t+1))` or equals the distinguished context formula `W`. -/
 def needs1b {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) : Bool :=
   decide (VC.decK t = IPC.k0) &&
     (decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t+1))) ||
      decide (E.W (VC.decN t) = W))
 
-/-- 递归检查：前 k 个位置（0..k-1）里，所有 needs1b 的位置 digit=1。k ≤ s.len。 -/
+/-- Recursive boolean check: among the first `k` positions, every place marked by `needs1b` carries digit `1`. -/
 def StepsOKbUpTo {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (s : fin_seq) : (k : ℕ) → (hk : k ≤ s.len) → Bool
 | 0, _ => true
@@ -263,18 +265,18 @@ def StepsOKbUpTo {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
        else
          true)
 
-/-- 全部位置的检查（k = s.len）。 -/
+/-- Full-length version of the previous check, i.e. the case `k = s.len`. -/
 def StepsOKb {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (s : fin_seq) : Bool :=
   StepsOKbUpTo (V := V) (a := a) (W := W) s s.len le_rfl
 
-/-- Prop 版 StepsOK：就是 Bool 版等于 true。这个当然可判定（Bool 等式）。 -/
+/-- Propositional version of `StepsOK`: simply the statement that the boolean test is `true`. -/
 def StepsOK {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (s : fin_seq) : Prop :=
   StepsOKb (V := V) (a := a) (W := W) s = true
 
 instance {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (s : fin_seq) :
     Decidable (StepsOK (V := V) (a := a) (W := W) s) :=
 by
-  -- Bool 等式的 decidable 是构造性的
+  -- Equality of booleans is constructively decidable.
   dsimp [StepsOK]
   infer_instance
 
@@ -284,23 +286,23 @@ def Tlaw {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) : fin_seq
     | 0   => if StepsOKb (V := V) (a := a) (W := W) s then 0 else 1
     | _+1 => 1
 
-/-- 便于后续用的展开引理：Tlaw=0 ↔ Σ=0 ∧ StepsOKb=true -/
+/-- Convenient unfolding lemma: `Tlaw = 0` iff `Σ = 0` and `StepsOKb = true`. -/
 lemma Tlaw_eq_zero_iff {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (s : fin_seq) :
     Tlaw (V := V) (a := a) (W := W) s = 0
       ↔ (V.S s = 0 ∧ StepsOK (V := V) (a := a) (W := W) s) := by
   unfold Tlaw StepsOK StepsOKb
   cases hS : V.S s with
   | zero =>
-      simp [hS, StepsOKb, StepsOKbUpTo]
+      simp
   | succ n =>
-      simp [hS]
+      simp
 
 lemma T_le_S {E : Enumerations} (V : VeldmanFan E) (a : Branch V) (W : Form) :
     ∀ s : fin_seq, Tlaw (E := E) V a W s = 0 → V.S s = 0 := by
   intro s hs
   exact (Tlaw_eq_zero_iff (V := V) (a := a) (W := W) (s := s)).1 hs |>.1
 
-/-- 从 `UpTo (k+1)=true` 推回 `UpTo k=true`（因为定义里是 `UpTo k && ...`）。 -/
+/-- If `UpTo (k+1) = true`, then `UpTo k = true`, since the recursive definition is `UpTo k && ...`. -/
 lemma StepsOKbUpTo_pred_true {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (s : fin_seq) (k : ℕ) (hk : k.succ ≤ s.len) :
     StepsOKbUpTo (V := V) (a := a) (W := W) s k.succ hk = true →
@@ -316,20 +318,40 @@ lemma StepsOKbUpTo_pred_true {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) 
   exact h'.1
 
 
+lemma StepsOKbUpTo_proof_irrel {E : ESk}
+    (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (s : fin_seq) :
+    ∀ k (hk1 hk2 : k ≤ s.len),
+      StepsOKbUpTo (V := V) (a := a) (W := W) s k hk1
+        = StepsOKbUpTo (V := V) (a := a) (W := W) s k hk2 := by
+  intro k
+  induction k with
+  | zero =>
+      intro hk1 hk2
+      rfl
+  | succ k ih =>
+      intro hk1 hk2
+      have hrec := ih (Nat.le_of_succ_le hk1) (Nat.le_of_succ_le hk2)
+      by_cases hneed : needs1b (V := V) (a := a) (W := W) k
+      · simp [StepsOKbUpTo, hneed, hrec]
+      · simp [StepsOKbUpTo, hneed, hrec]
 
 
 
 
 
-/-- child 的前 k 步检查等于原 s 的前 k 步检查（k ≤ s.len）。 -/
+
+
+/-- The first `k` checks for `child s q` agree with the first `k` checks for `s` whenever `k ≤ s.len`. -/
+lemma child_len_ge (s : fin_seq) (q : ℕ) : s.len ≤ (child s q).len := by
+  change s.len ≤ s.len + 1
+  exact Nat.le_succ s.len
+
 lemma StepsOKbUpTo_child_eq {E : ESk}
     (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (s : fin_seq) (q : ℕ) :
     ∀ k (hk : k ≤ s.len),
       StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) k
-          (Nat.le_trans hk (by
-            -- k ≤ s.len ≤ (child s q).len
-            simpa [child, fin_seq.extend, fin_seq.singleton] using Nat.le_succ s.len))
+          (Nat.le_trans hk (child_len_ge s q))
       =
       StepsOKbUpTo (V := V) (a := a) (W := W) s k hk := by
   intro k hk
@@ -338,130 +360,135 @@ lemma StepsOKbUpTo_child_eq {E : ESk}
       simp [StepsOKbUpTo]
   | succ k ih =>
       have hk' : k ≤ s.len := Nat.le_of_succ_le hk
-      have hkChild : k.succ ≤ (child s q).len := by
-        -- k+1 ≤ s.len ≤ s.len+1 = child.len
-        refine Nat.le_trans hk ?_
-        simpa [child, fin_seq.extend, fin_seq.singleton] using Nat.le_succ s.len
+      have hkChild : k.succ ≤ (child s q).len := Nat.le_trans hk (child_len_ge s q)
       have hkChild' : k ≤ (child s q).len := Nat.le_of_succ_le hkChild
 
-      -- 这一层需要用到：当 k < s.len 时，child.seq 在索引 k 处等于 s.seq 在索引 k 处
+      -- Here we use that when `k < s.len`, the `k`-th entry of `child.seq` is exactly the `k`-th entry of `s.seq`.
       have hlt : k < s.len := Nat.lt_of_lt_of_le (Nat.lt_succ_self k) hk
-      have hltChild : k < (child s q).len :=
-        Nat.lt_of_lt_of_le hlt (by
-          simpa [child, fin_seq.extend, fin_seq.singleton] using Nat.le_succ s.len)
+      have hltChild : k < (child s q).len := Nat.lt_of_lt_of_le hlt (child_len_ge s q)
 
       let iS : Fin s.len := ⟨k, hlt⟩
       let iC : Fin (child s q).len := ⟨k, hltChild⟩
 
       have hseq : (child s q).seq iC = s.seq iS := by
-        -- 因为 k < s.len，所以 extend 的旧位置直接回到 s
+        -- Since `k < s.len`, the `extend` operation reads from the old prefix `s` at this position.
         simp [child, fin_seq.extend, fin_seq.singleton, hlt, iS, iC]
 
-      -- 展开 StepsOKbUpTo 在 succ 处，左右各自都是 “递归 && (if needs1b k then decide(seq=1) else true)”
-      simp [StepsOKbUpTo, hk, hkChild, hk', hkChild', ih hk', hseq, iS, iC]
+      -- Unfold the successor clause of `StepsOKbUpTo`; on both sides we get `recursive && (if needs1b k then decide(seq=1) else true)`.
+      simp [StepsOKbUpTo, ih hk', hseq, iS, iC]
 
-/-- 你真正想用的：`child` 的 StepsOKbUpTo(full) 为真 ⇒ `s` 的 StepsOKbUpTo(full) 为真。 -/
+/-- The main prefix-transfer lemma: if the full `StepsOKbUpTo` check holds for `child s q`, then it already holds for `s`. -/
 lemma StepsOKbUpTo_prefix_child {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (s : fin_seq) (q : ℕ) :
     StepsOKbUpTo (V := V) (a := a) (W := W) (child s q)
         (child s q).len le_rfl = true →
     StepsOKbUpTo (V := V) (a := a) (W := W) s s.len le_rfl = true := by
   intro h
-  -- 先把 child.len 化简成 s.len.succ
+  -- First simplify `child.len` to `s.len.succ`.
   have hlen : (child s q).len = s.len.succ := by
     simp [child, fin_seq.extend, fin_seq.singleton]
-  -- 把 h 改写成 UpTo (s.len.succ)
+  -- Rewrite `h` into the `UpTo (s.len.succ)` form.
   have h' :
       StepsOKbUpTo (V := V) (a := a) (W := W) (child s q)
-        s.len.succ (by simpa [hlen]) = true := by
+        s.len.succ (by simp [hlen]) = true := by
     simpa [hlen] using h
-  -- 去掉最后一格：得到 UpTo s.len
+  -- Drop the last position and obtain the `UpTo s.len` statement.
   have hdown :
       StepsOKbUpTo (V := V) (a := a) (W := W) (child s q)
-        s.len (Nat.le_of_succ_le (by simpa [hlen] using (le_rfl : s.len.succ ≤ (child s q).len))) = true := by
-    -- 用 pred_true
+        s.len (Nat.le_of_succ_le (by simp [hlen] )) = true := by
+    -- Use the predecessor lemma above.
     exact StepsOKbUpTo_pred_true (V := V) (a := a) (W := W) (s := child s q)
-        (k := s.len) (hk := by simpa [hlen] using (le_rfl : s.len.succ ≤ (child s q).len)) h'
+        (k := s.len) (hk := by simp [hlen] ) h'
 
-  -- 把 child 的 UpTo s.len 改写成 s 的 UpTo s.len
+  -- Rewrite `child`'s `UpTo s.len` check back to the one for `s`.
   have heq :
       StepsOKbUpTo (V := V) (a := a) (W := W) (child s q)
-        s.len (Nat.le_trans (le_rfl : s.len ≤ s.len)
-          (by simpa [child, fin_seq.extend, fin_seq.singleton] using (Nat.le_succ s.len)))
+        s.len (Nat.le_trans (le_rfl : s.len ≤ s.len) (child_len_ge s q))
       =
       StepsOKbUpTo (V := V) (a := a) (W := W) s s.len le_rfl :=
     StepsOKbUpTo_child_eq (V := V) (a := a) (W := W) (s := s) (q := q) s.len le_rfl
 
-  -- 两个 hk 证明可能不是 definitional 相等：用 heq 把目标那边换掉即可
-  -- 这里用 `simpa [heq]` 收尾
+  -- The two `hk` proofs need not be definitionally equal; rewrite the target side using `heq`.
+  -- Finish the proof with `simpa [heq]`.
   simpa [heq] using hdown
 
-/-- 从 StepsOK s 推出 StepsOK (child s q)，最后一位用 hnew 强制 q=1。 -/
+/-- Extend `StepsOK` from `s` to `child s q`; the final coordinate is forced to be `1` by `hnew`. -/
 lemma StepsOK_child_of_StepsOK {E : ESk}
     (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (s : fin_seq) (q : ℕ)
     (hS : StepsOK (V := V) (a := a) (W := W) s)
     (hnew : needs1b (V := V) (a := a) (W := W) s.len = true → q = 1) :
     StepsOK (V := V) (a := a) (W := W) (child s q) := by
-  -- 展开 StepsOK/StepsOKb
+  -- Unfold `StepsOK` and `StepsOKb`.
   unfold StepsOK at hS ⊢
   unfold StepsOKb at hS ⊢
 
-  -- child.len = s.len + 1，所以 StepsOKb(child) = StepsOKbUpTo(child) (s.len+1) ...
-  -- 我们先把目标展开一层（k+1 情形）
+  -- Since `child.len = s.len + 1`, `StepsOKb(child)` is the `StepsOKbUpTo(child) (s.len+1)` instance.
   have hlen : (child s q).len = s.len + 1 := by
     simp [child, fin_seq.extend, fin_seq.singleton]
+  have hkfull : s.len.succ ≤ (child s q).len := by
+    rw [hlen]
 
-  -- 把目标化成 “前 s.len 步 && 最后一位检查”
-  -- 注意：StepsOKbUpTo 的 (k+1) 分支会在索引 k= s.len 处检查 digit
-  -- 所以这里 k = s.len
-  -- 先把 child 的前 s.len 步检查换回 s 的前 s.len 步检查
   have hPrefixEq :
       StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) s.len
-          (Nat.le_trans le_rfl (by
-            simpa [hlen] using Nat.le_succ s.len))
+          (Nat.le_of_succ_le hkfull)
       =
       StepsOKbUpTo (V := V) (a := a) (W := W) s s.len le_rfl :=
-    StepsOKbUpTo_child_eq (V := V) (a := a) (W := W) (s := s) (q := q) s.len le_rfl
+    calc
+      StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) s.len
+          (Nat.le_of_succ_le hkfull)
+          = StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) s.len
+              (Nat.le_trans le_rfl (child_len_ge s q)) :=
+            StepsOKbUpTo_proof_irrel (V := V) (a := a) (W := W) (s := child s q) s.len _ _
+      _ = StepsOKbUpTo (V := V) (a := a) (W := W) s s.len le_rfl :=
+            StepsOKbUpTo_child_eq (V := V) (a := a) (W := W) (s := s) (q := q) s.len le_rfl
 
-  -- 现在展开 StepsOKbUpTo(child) 在 (s.len+1)
-  -- 其形式是：prefix && (if needs1b s.len then decide(lastDigit=1) else true)
-  -- lastDigit = q
-  have hLast : (child s q).seq ⟨s.len, by
-      -- s.len < child.len
-      simpa [hlen] using Nat.lt_succ_self s.len
-    ⟩ = q := by
-    simpa [child] using (VC.extend_singleton_last s q)
+  have hPrefixTrue :
+      StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) s.len
+          (Nat.le_of_succ_le hkfull) = true := by
+    rw [hPrefixEq]
+    exact hS
 
-  -- 对 needs1b(s.len) 分情况
   by_cases hb : needs1b (V := V) (a := a) (W := W) s.len
   · -- hb : needs1b ... s.len = true
     have hq : q = 1 := hnew hb
     subst hq
-    -- 目标 becomes: (prefix = true) && decide(1=1)=true
-    -- prefix = StepsOKb s = true，由 hS 得到
-    -- decide(...) = true by simp
-    -- 直接 simp 即可
-    -- 先把 prefix 部分换成 s 的 prefix
-    -- 再用 hS
-    simp [StepsOKbUpTo, hlen, hPrefixEq, hS, hb, hLast]
+    have hLast : (child s 1).seq
+        ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩ = 1 := by
+      have hidx :
+          (⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩ : Fin (child s 1).len)
+            = ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ := by
+        apply Fin.ext
+        rfl
+      calc
+        (child s 1).seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩
+            = (child s 1).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ := by rw [hidx]
+        _ = 1 := by
+            change (extend s (singleton 1)).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = 1
+            exact VC.extend_singleton_last s 1
+    have hmain :
+        StepsOKbUpTo (V := V) (a := a) (W := W) (child s 1) s.len.succ hkfull = true := by
+      simp [StepsOKbUpTo, hb, hPrefixTrue, hLast]
+    simpa [hlen] using hmain
   · -- hb : needs1b ... s.len = false
-    -- 最后一项 if ... else true 直接为 true，不需要约束 q
-    simp [StepsOKbUpTo, hlen, hPrefixEq, hS, hb, hLast]
+    have hmain :
+        StepsOKbUpTo (V := V) (a := a) (W := W) (child s q) s.len.succ hkfull = true := by
+      simp [StepsOKbUpTo, hb, hPrefixTrue]
+    simpa [hlen] using hmain
 
 lemma StepsOK_empty {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) :
     StepsOK (E := E) V a W empty_seq := by
   -- StepsOK = (StepsOKb = true)
   dsimp [StepsOK, StepsOKb]
-  -- 目标变成：StepsOKbUpTo ... empty_seq empty_seq.len le_rfl = true
+  -- The goal becomes `StepsOKbUpTo ... empty_seq empty_seq.len le_rfl = true`.
 
-  -- 关键：把 empty_seq.len 化成 0
+  -- Key simplification: rewrite `empty_seq.len` to `0`.
   have hlen : empty_seq.len = 0 := by
-    -- 这一步通常就够了；如果你 empty_seq 的名字在别的 namespace，
-    -- 就把 [empty_seq] 换成你实际的定义名
+    -- This is usually enough; if `empty_seq` lives in a different namespace in your setup,
+    -- replace `[empty_seq]` by the actual name used in your development.
     simp [empty_seq]
 
-  -- 用 hlen 改写目标，StepsOKbUpTo 的 0 分支就是 true
+  -- After rewriting with `hlen`, the `0`-case of `StepsOKbUpTo` is exactly `true`.
   simp [hlen, StepsOKbUpTo]
 
 lemma needs1b_k0_of_true {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) :
@@ -476,9 +503,10 @@ lemma needs1b_k0_of_true {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W :
 lemma AllowedStepb_k0_one (E0 : VC.Enumerations) (st : VC.State) :
     VC.decK st.t = IPC.k0 → VC.AllowedStepb E0 st 1 = true := by
   intro hk0
-  -- unfold AllowedStepb: 在 k0 分支里要么 decide (1=1) 要么 decide(1=0 ∨ 1=1)，都为 true
+  -- Unfold `AllowedStepb`: in the `k0` branch we get either `decide (1 = 1)` or `decide (1 = 0 ∨ 1 = 1)`, both equal to `true`.
   unfold VC.AllowedStepb
   simp [hk0]
+
 /-! ### `Tlaw` is a fan law -/
 
 theorem Tlaw_is_fan_law {E : Enumerations} (V : VeldmanFan E) (a : Branch V) (W : Form)(hV : V = Vconcrete E) :
@@ -502,7 +530,7 @@ theorem Tlaw_is_fan_law {E : Enumerations} (V : VeldmanFan E) (a : Branch V) (W 
         let E0 : VC.Enumerations := toConcreteEnum E
         let st : VC.State := VC.runState E0 s
         have ht : st.t = s.len := by
-    -- 你已经有 runState_t : (VC.runState E0 s).t = s.len
+    -- This is exactly the already proved fact `runState_t : (VC.runState E0 s).t = s.len`.
           simpa [st] using runState_t (E0 := E0) (s := s)
 
         have hAllowed : VC.AllowedStepb E0 st q = true := by
@@ -522,7 +550,7 @@ theorem Tlaw_is_fan_law {E : Enumerations} (V : VeldmanFan E) (a : Branch V) (W 
 
         have hSsSigma : VC.Sigma E0 s = 0 := by
           cases hV
-    -- 因为 V.S = Sigma E0 （在 Vconcrete 的定义里）
+    -- Because `V.S = Sigma E0` by the definition of `Vconcrete`.
           simpa [Vconcrete, E0] using hSs
 
         have hSigmaChildSigma : VC.Sigma E0 (child s q) = 0 :=
@@ -583,7 +611,7 @@ lemma Forced0b_witness (E0 : VC.Enumerations) (st : VC.State) :
       )).1 h with
       ⟨i, hi, hpi⟩
 
-    -- 拆 && = true
+    -- Split the conjunction `&& = true` into its two boolean components.
     have hsplit :
         decide ((E0.d i).2 = E0.W (VC.decN st.t)) = true ∧
         decide ((E0.d i).1 ⊆ st.Fs) = true :=
@@ -596,7 +624,7 @@ lemma Forced0b_witness (E0 : VC.Enumerations) (st : VC.State) :
       (_root_.decide_eq_true_iff).1 hsplit.2
 
     exact ⟨i, hi, ⟨hEq, hSub⟩⟩
-  · -- hk0 false 时 Forced0b = false，所以 h 不可能
+  · -- If `hk0` is false, then `Forced0b = false`, so this branch is impossible.
     simp [hk0] at h
 
 lemma Forced0b_prf (E0 : VC.Enumerations) (st : VC.State) :
@@ -616,84 +644,59 @@ lemma Forced0b_prf (E0 : VC.Enumerations) (st : VC.State) :
 
 lemma runState_child (E0 : VC.Enumerations) (s : fin_seq) (q : ℕ) :
     VC.runState E0 (child s q) = VC.step E0 (VC.runState E0 s) q := by
+  have hlen : (child s q).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hle : s.len ≤ (child s q).len := child_len_ge s q
+  have hkfull : s.len.succ ≤ (child s q).len := by
+    rw [hlen]
 
-  -- 记 t = child s q
-  let t : fin_seq := child s q
-
-  -- t.len = s.len + 1 = s.len.succ
-  have hlen : t.len = s.len.succ := by
-    -- simp 先出 s.len + 1，再用 succ_eq_add_one
-    have : t.len = s.len + 1 := by
-      simp [t, child, fin_seq.extend, fin_seq.singleton]
-    simpa [Nat.succ_eq_add_one] using this
-
-  -- s.len ≤ t.len
-  have hle : s.len ≤ t.len := by
-    simpa [hlen] using (Nat.le_succ s.len)
-
-  -- Prefix s t
-  have hPref : Prefix s t := VC.Prefix_child s q
-
-  -- Prefix 等价：runStateAux 在公共前缀长度 s.len 上相同
+  have hPref : Prefix s (child s q) := VC.Prefix_child s q
   have hEqPrefix :
-      VC.runStateAux E0 t s.len (Nat.le_trans le_rfl (VC.Prefix_len_le hPref))
+      VC.runStateAux E0 (child s q) s.len (Nat.le_trans le_rfl (VC.Prefix_len_le hPref))
         = VC.runStateAux E0 s s.len le_rfl :=
     VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
 
-  -- 把 hEqPrefix 左边的“≤证明”换成我们想用的 hle（靠 proof-irrelevance）
   have hEq :
-      VC.runStateAux E0 t s.len hle = VC.runStateAux E0 s s.len le_rfl := by
+      VC.runStateAux E0 (child s q) s.len hle = VC.runStateAux E0 s s.len le_rfl := by
     calc
-      VC.runStateAux E0 t s.len hle
-          = VC.runStateAux E0 t s.len (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+      VC.runStateAux E0 (child s q) s.len hle
+          = VC.runStateAux E0 (child s q) s.len (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
               symm
-              exact VC.runStateAux_proof_irrel (E := E0) (s := t) s.len
-                hle (Nat.le_trans le_rfl (VC.Prefix_len_le hPref))
+              exact VC.runStateAux_proof_irrel (E := E0) (s := child s q) s.len _ _
       _ = VC.runStateAux E0 s s.len le_rfl := hEqPrefix
 
-  -- t.seq 在位置 s.len 的 digit 就是 q（要对齐 Fin 的 proof）
   have hDigit :
-      t.seq ⟨s.len, by
-        -- s.len < t.len
-        simpa [hlen] using Nat.lt_succ_self s.len
-      ⟩ = q := by
-    -- 先用 VeldmanConcrete.extend_singleton_last 得到一个“标准 proof”的索引版本
-    have h' :
-        t.seq ⟨s.len, by
-          simp [t, child, fin_seq.extend, fin_seq.singleton]
-        ⟩ = q := by
-      simpa [t, child] using VC.extend_singleton_last s q
-    -- 两个 Fin 索引 val 相同，只是证明不同，用 Fin.ext 对齐
-    have hFin :
-        (⟨s.len, by simpa [hlen] using Nat.lt_succ_self s.len⟩ : Fin t.len)
-          = ⟨s.len, by simp [t, child, fin_seq.extend, fin_seq.singleton]⟩ := by
-      apply Fin.ext; rfl
-    simpa [hFin] using h'
+      (child s q).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = q := by
+    change (extend s (singleton q)).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = q
+    exact VC.extend_singleton_last s q
 
-  -- 展开 runState(t) = runStateAux t t.len，化简一次 runStateAux 的 succ 分支
-  -- 注意：runStateAux 的 succ 分支里会用 `Nat.le_of_succ_le` 从 (s.len+1 ≤ t.len) 得到 (s.len ≤ t.len)，
-  -- 这也是一个“≤证明”，用 proof-irrelevance 换成 hle
   have hpi :
-      VC.runStateAux E0 t s.len (Nat.le_of_succ_le (by
-        -- (s.len.succ ≤ t.len) 由 hlen 得到
-        simpa [hlen] using (le_rfl : s.len.succ ≤ s.len.succ)
-      )) = VC.runStateAux E0 t s.len hle := by
-    exact VC.runStateAux_proof_irrel (E := E0) (s := t) s.len
-      (Nat.le_of_succ_le (by simpa [hlen] using (le_rfl : s.len.succ ≤ s.len.succ)))
-      hle
+      VC.runStateAux E0 (child s q) s.len (Nat.le_of_succ_le hkfull)
+        = VC.runStateAux E0 (child s q) s.len hle := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s q) s.len _ _
 
-  -- 最后一步：把 runStateAux(t, s.len) 换成 runStateAux(s, s.len)，digit 换成 q
-  -- 就得到 step E0 (runState E0 s) q
-  simp [VC.runState, t, hlen, VC.runStateAux, VC.step, hpi, hEq, hDigit]
-    -- 由 state 等式推出各字段等式
-  refine And.intro ?_ (And.intro ?_ ?_)
-  · -- t 字段相等
-    simpa using congrArg (fun st => st.t) hEq
-  · -- prev1 字段相等
-    simpa using congrArg (fun st => st.prev1) hEq
-  · -- FStep 在同一个 state 上重写
-    -- 这里不用 VC.FStep，直接用全名最稳
-    simpa using congrArg (fun st => IPC.VeldmanConcrete.FStep E0 st q) hEq
+  have hle_simp : s.len ≤ (child s q).len := by
+    simp[hlen]
+
+  have hSt : VC.runStateAux E0 (child s q) s.len hle_simp = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s q) s.len hle_simp
+          = VC.runStateAux E0 (child s q) s.len hle := by
+              exact VC.runStateAux_proof_irrel (E := E0) (s := child s q) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl := hEq
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+
+  change VC.runStateAux E0 (child s q) (child s q).len le_rfl = VC.step E0 (VC.runState E0 s) q
+  have hStep :
+      VC.runStateAux E0 (child s q) (child s q).len le_rfl
+        = VC.step E0 (VC.runStateAux E0 (child s q) s.len hle_simp) q := by
+    simp [child, fin_seq.extend, fin_seq.singleton, VC.runStateAux, VC.step]
+  calc
+    VC.runStateAux E0 (child s q) (child s q).len le_rfl
+        = VC.step E0 (VC.runStateAux E0 (child s q) s.len hle_simp) q := hStep
+    _ = VC.step E0 (VC.runState E0 s) q := by
+          rw [hSt]
 
 /-! ### Subfan property (paper 4.1(i) in propositional form): Γα ⊆ Γβ and W ∈ Γβ -/
 
@@ -708,28 +711,34 @@ lemma Prefix_finitize (α : NatSeq) {n m : ℕ} (h : n ≤ m) :
 
 /-- A simple lower bound: the scheduling time `schedEncode ⟨n, m, k0⟩` is at least `m`. -/
 
+lemma le_pairEncodeBin_right (n m : ℕ) : m ≤ IPC.pairEncodeBin n m := by
+  induction n with
+  | zero =>
+      simpa [IPC.pairEncodeBin, Nat.bit, Nat.mul_comm] using
+        (Nat.le_mul_of_pos_left m (by decide : 0 < 2))
+  | succ n ih =>
+      have hstep : IPC.pairEncodeBin n m ≤ IPC.pairEncodeBin (n + 1) m := by
+        calc
+          IPC.pairEncodeBin n m ≤ 2 * IPC.pairEncodeBin n m := by
+            simpa [Nat.mul_comm] using
+              (Nat.le_mul_of_pos_left (IPC.pairEncodeBin n m) (by decide : 0 < 2))
+          _ ≤ 2 * IPC.pairEncodeBin n m + 1 := Nat.le_succ _
+          _ = IPC.pairEncodeBin (n + 1) m := by simp [IPC.pairEncodeBin, Nat.bit]
+      exact Nat.le_trans ih hstep
+
 lemma le_schedEncode_k0 (n m : ℕ) : m ≤ IPC.schedEncode ⟨n, m, IPC.k0⟩ := by
-  -- unfold schedEncode, k0; goal becomes `m ≤ 3 * Nat.pair n m`
-  simp [IPC.schedEncode, IPC.k0]
-
-  have hpair : m ≤ Nat.pair n m := Nat.right_le_pair n m
-
-  -- m = 1*m ≤ 3*m
-  have hm : m ≤ 3 * m := by
-    simpa [Nat.one_mul] using
-      (Nat.mul_le_mul_right m (show (1 : ℕ) ≤ 3 by decide))
-
-  -- 3*m ≤ 3*(pair n m)
-  have hmul : (3 * m : ℕ) ≤ (3 * Nat.pair n m : ℕ) := by
-    exact Nat.mul_le_mul_left 3 hpair
-
-  exact le_trans hm hmul
+  have hm : m ≤ IPC.pairEncodeBin n m := le_pairEncodeBin_right n m
+  have hmul : IPC.pairEncodeBin n m ≤ 3 * IPC.pairEncodeBin n m := by
+    simpa [Nat.mul_comm] using
+      (Nat.le_mul_of_pos_left (IPC.pairEncodeBin n m) (by decide : 0 < 3))
+  have : m ≤ 3 * IPC.pairEncodeBin n m := Nat.le_trans hm hmul
+  simpa [IPC.schedEncode, IPC.schedEncodeBin, IPC.k0] using this
 
 lemma Prefix_finitize_le (x : 𝒩) {m n : ℕ} (h : m ≤ n) :
     Prefix (finitize x m) (finitize x n) := by
   refine ⟨h, ?_⟩
   intro i
-  -- 两边都是 x i.val
+  -- Both sides evaluate to `x i.val`.
   rfl
 lemma needs1b_true_of_k0_mem
     {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ)
@@ -737,27 +746,26 @@ lemma needs1b_true_of_k0_mem
     (hmem : E.W (VC.decN t) ∈ V.F (finitize a.1 (t+1))) :
     needs1b (V := V) (a := a) (W := W) t = true := by
   unfold needs1b
-  -- 拆成 decide(...) && (decide(mem) || decide(eq))
+  -- Expand the boolean test into `decide(...) && (decide(mem) || decide(eq))`.
   have hk0' : decide (VC.decK t = IPC.k0) = true :=
     (_root_.decide_eq_true_iff).2 hk0
   have hmem' : decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t+1))) = true :=
     (_root_.decide_eq_true_iff).2 hmem
-  -- 左边 true，右边 or 的左支 true ⇒ 整体 true
+  -- The left conjunct is true, and the left side of the right-hand disjunction is true, so the whole expression is true.
   simp [hk0', hmem']
+
 lemma StepsOK_finitize_digit_eq_one
     {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (bseq : 𝒩) (t : ℕ)
     (hSteps : StepsOK (V := V) (a := a) (W := W) (finitize bseq (t+1)))
     (hneed : needs1b (V := V) (a := a) (W := W) t = true) :
     bseq t = 1 := by
-  -- StepsOK 是 Prop：StepsOKb = true
   unfold StepsOK at hSteps
   unfold StepsOKb at hSteps
-  -- 展开 StepsOKbUpTo 在 (t+1) 这一层，只展开一层即可
+
   have hLayer :
       StepsOKbUpTo (V := V) (a := a) (W := W) (finitize bseq (t+1)) (t+1) le_rfl = true := hSteps
 
-  -- 展开 succ 分支：prefix && (if needs1b t then decide(seq=1) else true)
   have hAnd :
       StepsOKbUpTo (V := V) (a := a) (W := W) (finitize bseq (t+1)) t (Nat.le_of_succ_le le_rfl)
         &&
@@ -767,119 +775,46 @@ lemma StepsOK_finitize_digit_eq_one
       = true := by
     simpa [StepsOKbUpTo] using hLayer
 
-  have hLast :
-      (if needs1b (V := V) (a := a) (W := W) t then
-          decide ((finitize bseq (t+1)).seq ⟨t, Nat.lt_succ_self t⟩ = 1)
-       else true)
-      = true := by exact Bool.and_elim_right hSteps
-
-  -- 由于 hneed=true，if 分支落到 decide(...)
   have hDec :
       decide ((finitize bseq (t+1)).seq ⟨t, Nat.lt_succ_self t⟩ = 1) = true := by
-    simpa [hneed] using hLast
+    simpa [hneed] using (Bool.and_eq_true_iff.mp hAnd).2
 
   have hEq :
       (finitize bseq (t+1)).seq ⟨t, Nat.lt_succ_self t⟩ = 1 :=
     (_root_.decide_eq_true_iff).1 hDec
 
-  -- finitize 的 seq 在索引 t 处就是 bseq t
-  simpa [fin_seq.finitize] using hEq
+  change bseq t = 1 at hEq
+  exact hEq
 
-/-- `finitize b (t+1)` 等于把 `finitize b t` 用最后一位 `b t` 扩展一格。 -/
+/-- `finitize b (t+1)` is obtained from `finitize b t` by extending with the final digit `b t`. -/
 lemma finitize_succ_eq_child (bseq : 𝒩) (t : ℕ) :
     finitize bseq (t+1) = child (finitize bseq t) (bseq t) := by
-  -- 两边长度都是 t+1
-  have hlen :
-      (finitize bseq (t+1)).len = (child (finitize bseq t) (bseq t)).len := by
-    simp [child, fin_seq.extend, fin_seq.singleton, fin_seq.finitize]
+  change
+    fin_seq.mk (t + 1) (fun i : Fin (t + 1) => bseq i.val)
+      =
+    fin_seq.mk (t + 1) (fun i : Fin (t + 1) =>
+      if h : i.val < t then bseq i.val else bseq t)
+  apply congrArg (fun f => fin_seq.mk (t + 1) f)
+  funext i
+  by_cases hi : i.val < t
+  · simp [hi]
+  · have hi_eq : i.val = t := by
+      have hi_lt : i.val < t + 1 := i.isLt
+      omega
+    simp [ hi_eq]
 
-  -- 用 fan.lean 里的 ext_cast
-  apply ext_cast hlen
-  intro i
-
-  -- 先把 cast 消掉（因为 hlen 其实就是 rfl 形态）
-  have hcast : (Fin.cast hlen i).1 = i.1 := rfl
-
-  by_cases hi : i.1 < t
-  · -- i < t：extend 走左侧（prefix）分支
-    -- LHS = bseq i, RHS = (finitize bseq t).seq ... = bseq i
-    simp [fin_seq.finitize, child, fin_seq.extend, fin_seq.singleton, hi, hcast]
-  · -- i ≥ t：由于 i < t+1，只能是 i = t
-    have hi_le : i.1 ≤ t := Nat.le_of_lt_succ (by
-      -- i.2 : i.val < (t+1) （因为 i : Fin (t+1)）
-      simpa [fin_seq.finitize] using i.2)
-    have hi_eq : i.1 = t := (Nat.lt_or_eq_of_le hi_le).resolve_left hi
-
-    -- RHS 走 extend 的 else 分支，singleton 的索引是 (i.val - t)=0
-    -- LHS 在 i=t 时就是 bseq t
-    simp [fin_seq.finitize, child, fin_seq.extend, fin_seq.singleton, hi, hi_eq, hcast]
-
-/-- 从 Bool 版 StepsOK + needs1b=true 推出第 t0 位 digit=1（用于 t0+1 长度前缀）。 -/
+/-- From `StepsOK` in boolean form together with `needs1b = true`, conclude that the digit at time `t0` is `1`. -/
 lemma digit_one_of_StepsOK_of_needs1b
     {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form)
     (bseq : 𝒩) (t0 : ℕ)
     (hSteps : StepsOK (V := V) (a := a) (W := W) (finitize bseq (t0 + 1)))
     (hneed : needs1b (V := V) (a := a) (W := W) t0 = true) :
     (finitize bseq (t0 + 1)).seq ⟨t0, Nat.lt_succ_self t0⟩ = 1 := by
+  have hnat : bseq t0 = 1 :=
+    StepsOK_finitize_digit_eq_one
+      (V := V) (a := a) (W := W) (bseq := bseq) (t := t0) hSteps hneed
+  simpa [fin_seq.finitize] using hnat
 
-  let s1 : fin_seq := finitize bseq (t0 + 1)
-
-  -- 展开 StepsOK / StepsOKb
-  have hStepsb : StepsOKb (V := V) (a := a) (W := W) s1 = true := by
-    simpa [StepsOK, s1] using hSteps
-
-  unfold StepsOKb at hStepsb
-
-  -- hUp : StepsOKbUpTo ... (t0+1) ... = true
-  have hUp : StepsOKbUpTo (V := V) (a := a) (W := W) s1 (t0 + 1) (by
-      -- (t0+1) ≤ s1.len
-      simpa [s1, fin_seq.finitize_len] using (le_rfl : t0 + 1 ≤ t0 + 1)
-    ) = true := by
-    simpa [s1, fin_seq.finitize_len] using hStepsb
-
-  -- 定义 hk / hk'，保证和 StepsOKbUpTo 递归里生成的 proof 对齐
-  have hk : t0 + 1 ≤ s1.len := by
-    simpa [s1, fin_seq.finitize_len] using (le_rfl : t0 + 1 ≤ t0 + 1)
-  let hk' : t0 ≤ s1.len := Nat.le_of_succ_le hk
-
-  -- 关键：把 StepsOKbUpTo 在 (t0+1) 展开成 “prefix && last”
-  have hUpAnd :
-      StepsOKbUpTo (V := V) (a := a) (W := W) s1 t0 hk' &&
-        (if needs1b (V := V) (a := a) (W := W) t0 = true then
-            decide (s1.seq ⟨t0, by
-              -- t0 < s1.len
-              simpa [s1, fin_seq.finitize_len] using Nat.lt_succ_self t0
-            ⟩ = 1)
-         else true)
-      = true := by
-    -- 注意：这里第二项就是那个 Bool 本身，不要包一层 decide((...)=true)
-    -- 直接对 StepsOKbUpTo 的递归方程 simp
-    simpa [StepsOKbUpTo, hk, hk', s1, fin_seq.finitize_len] using hUp
-
-  -- 用 Eq.mp (Bool.and_eq_true _ _) 拆出两个子句
-  have hAnd :
-      StepsOKbUpTo (V := V) (a := a) (W := W) s1 t0 hk' = true ∧
-      (if needs1b (V := V) (a := a) (W := W) t0 = true then
-          decide (s1.seq ⟨t0, by
-            simpa [s1, fin_seq.finitize_len] using Nat.lt_succ_self t0
-          ⟩ = 1)
-       else true) = true := by
-    exact Bool.and_eq_true_iff.mp hSteps
-
-  -- 用 hneed 选中 then 分支，得到 decide(seq=1)=true
-  have hDec :
-      decide (s1.seq ⟨t0, by
-        simpa [s1, fin_seq.finitize_len] using Nat.lt_succ_self t0
-      ⟩ = 1) = true := by
-    simpa [hneed] using hAnd.2
-
-  have hEq : s1.seq ⟨t0, by
-        simpa [s1, fin_seq.finitize_len] using Nat.lt_succ_self t0
-      ⟩ = 1 :=
-    (_root_.decide_eq_true_iff).1 hDec
-
-  -- 把 s1 展开回 finitize bseq (t0+1)
-  simpa [s1] using hEq
 /-
 Paper: Lemma 2.3 (constructive version)
 
@@ -896,222 +831,182 @@ lemma subfan_ok
     {E : Enumerations} (V : VeldmanFan E)
     (a : Branch V) (W : Form)
     (hV : V = Vconcrete E)
-    (T : fin_seq → ℕ) (hTdef : T = Tlaw (E := E) V a W)
+    (T : fin_seq -> Nat) (hTdef : T = Tlaw (E := E) V a W)
     (hT : is_fan_law T)
     (b : fan T hT) :
-    (Gamma V a ⊆
-        Gamma V
+    And
+      (Set.Subset (Gamma V a)
+        (Gamma V
           (toBranchOfSubfan V hT (fun s hs => by
               subst hV
               subst hTdef
-              exact T_le_S (V := Vconcrete E) (a := a) (W := W) (s := s) hs) b)) ∧
-      W ∈
-        Gamma V
+              exact T_le_S (V := Vconcrete E) (a := a) (W := W) (s := s) hs) b)))
+      ((Gamma V
           (toBranchOfSubfan V hT (fun s hs => by
               subst hV
               subst hTdef
-              exact T_le_S (V := Vconcrete E) (a := a) (W := W) (s := s) hs) b) := by
+              exact T_le_S (V := Vconcrete E) (a := a) (W := W) (s := s) hs) b)) W) := by
   subst hV
   subst hTdef
-  -- From now on, `V` is the concrete fan and `T` is our `Tlaw`.
   let V : VeldmanFan E := Vconcrete E
-  let T : fin_seq → ℕ := Tlaw (E := E) V a W
-  let β : Branch V := toBranchOfSubfan V hT (T_le_S (V := V) (a := a) (W := W)) b
-  have hbSeq : β.1 = b.1 := rfl
+  let T : fin_seq -> Nat := Tlaw (E := E) V a W
+  let beta : Branch V := toBranchOfSubfan V hT (T_le_S (V := V) (a := a) (W := W)) b
+  have hbSeq : beta.1 = b.1 := rfl
 
-  refine ⟨?_, ?_⟩
-  · -- Γ_a ⊆ Γ_β
+  have hmem_child_k0_one :
+      forall {n : Nat} {s : fin_seq},
+        VC.decK s.len = IPC.k0 ->
+        VC.decN s.len = n ->
+        E.W n ∈ V.F (child s 1) := by
+    intro n s hk0s hdecNs
+    let E0 : VC.Enumerations := toConcreteEnum E
+    have hlen : (child s 1).len = s.len.succ := by
+      simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+    have hSucc : s.len.succ <= (child s 1).len := by
+      simp[hlen]
+    have hPred : s.len <= (child s 1).len := Nat.le_of_succ_le hSucc
+    have hPref : Prefix s (child s 1) := VC.Prefix_child s 1
+    have hEqPrefix :
+        VC.runStateAux E0 (child s 1) s.len hPred = VC.runState E0 s := by
+      calc
+        VC.runStateAux E0 (child s 1) s.len hPred
+            = VC.runStateAux E0 (child s 1) s.len
+                (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                  exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+        _ = VC.runStateAux E0 s s.len le_rfl :=
+              VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+        _ = VC.runState E0 s := by
+              rw [VC.runState]
+    have htPrefix :
+        (VC.runStateAux E0 (child s 1) s.len hPred).t = s.len := by
+      calc
+        (VC.runStateAux E0 (child s 1) s.len hPred).t
+            = (VC.runState E0 s).t := by
+                simpa using congrArg (fun st => st.t) hEqPrefix
+        _ = s.len := by
+              simpa using runState_t (E0 := E0) (s := s)
+    have hk0Prefix : VC.decK (VC.runStateAux E0 (child s 1) s.len hPred).t = IPC.k0 := by
+      simpa [htPrefix] using hk0s
+    have hdecNPrefix : VC.decN (VC.runStateAux E0 (child s 1) s.len hPred).t = n := by
+      simpa [htPrefix] using hdecNs
+    have hFsPrefix :
+        (VC.runStateAux E0 (child s 1) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+      simpa using congrArg (fun st => st.Fs) hEqPrefix
+    have hpi :
+        VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc)
+          = VC.runStateAux E0 (child s 1) s.len hPred := by
+      exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+    have hDigit :
+        (child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 1 := by
+      simp [child, fin_seq.extend, fin_seq.singleton]
+    have hFsChild :
+        (VC.runState E0 (child s 1)).Fs = insert (E.W n) (VC.runState E0 s).Fs := by
+      change
+        (VC.step E0
+          (VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc))
+          ((child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+            = insert (E.W n) (VC.runState E0 s).Fs
+      rw [hpi, hDigit]
+      change VC.FStep E0 (VC.runStateAux E0 (child s 1) s.len hPred) 1 = _
+      unfold VC.FStep
+      dsimp
+      rw [if_pos hk0Prefix]
+      rw [hdecNPrefix, hFsPrefix]
+      simp [E0, toConcreteEnum]
+    have hmem : E.W n ∈ (VC.runState E0 (child s 1)).Fs := by
+      rw [hFsChild]
+      exact Finset.mem_insert_self _ _
+    simpa [V, Vconcrete, VC.FS, E0] using hmem
+
+  constructor
+  case left =>
     intro p hp
-    rcases hp with ⟨nA, hpA⟩
-    -- Pick an index enumerating `p`.
-    rcases E.W_surj p with ⟨n0, rfl⟩
+    cases hp with
+    | intro nA hpA =>
+        cases E.W_surj p with
+        | intro n0 hn0 =>
+            let t0 : Nat := IPC.schedEncode (n0, nA, IPC.k0)
+            have hk0 : VC.decK t0 = IPC.k0 := by
+              simp [t0, VC.decK, IPC.schedDecode_encode]
+            have hdecN : VC.decN t0 = n0 := by
+              simp [t0, VC.decN, IPC.schedDecode_encode]
+            have hle : nA <= t0 := le_schedEncode_k0 n0 nA
+            have hPref : Prefix (finitize a.1 nA) (finitize a.1 t0) := Prefix_finitize a.1 hle
+            have hmemA : E.W n0 ∈ V.F (finitize a.1 t0) := by
+              exact (V.F_mono hPref (a.2 nA) (a.2 t0)) (by simpa [hn0] using hpA)
+            have hPref01 : Prefix (finitize a.1 t0) (finitize a.1 (t0 + 1)) :=
+              Prefix_finitize_le a.1 (Nat.le_succ t0)
+            have hmemA1 : E.W n0 ∈ V.F (finitize a.1 (t0 + 1)) := by
+              exact (V.F_mono hPref01 (a.2 t0) (a.2 (t0 + 1))) hmemA
+            have hneed : needs1b (V := V) (a := a) (W := W) t0 = true :=
+              needs1b_true_of_k0_mem (V := V) (a := a) (W := W) (t := t0) hk0
+                (by simpa [hdecN] using hmemA1)
+            have hb0 : T (finitize b.1 (t0 + 1)) = 0 := b.2 (t0 + 1)
+            have hbSteps : StepsOK (V := V) (a := a) (W := W) (finitize b.1 (t0 + 1)) :=
+              (Tlaw_eq_zero_iff (V := V) (a := a) (W := W) (s := finitize b.1 (t0 + 1))).1 hb0 |>.2
+            have hbDigit : b.1 t0 = 1 :=
+              StepsOK_finitize_digit_eq_one (V := V) (a := a) (W := W)
+                (bseq := b.1) (t := t0) hbSteps hneed
+            let s0 : fin_seq := finitize b.1 t0
+            have hs0 : finitize b.1 (t0 + 1) = child s0 1 := by
+              have hchild : finitize b.1 (t0 + 1) = child (finitize b.1 t0) (b.1 t0) :=
+                finitize_succ_eq_child (bseq := b.1) (t := t0)
+              simpa [s0, hbDigit] using hchild
+            have hk0s0 : VC.decK s0.len = IPC.k0 := by
+              simpa [s0, fin_seq.finitize_len] using hk0
+            have hdecNs0 : VC.decN s0.len = n0 := by
+              simpa [s0, fin_seq.finitize_len] using hdecN
+            have hmemChild : E.W n0 ∈ V.F (child s0 1) :=
+              hmem_child_k0_one (s := s0) hk0s0 hdecNs0
+            have hmemB : E.W n0 ∈ V.F (finitize b.1 (t0 + 1)) := by
+              rw [hs0]
+              exact hmemChild
+            exact Exists.intro (t0 + 1) (by simpa [hbSeq, hn0] using hmemB)
 
-    -- Choose a scheduling time that is *after* the witness `nA`,
-    -- so that `E.W n0` is already in `F(prefix a t0)` by monotonicity.
-    let t0 : ℕ := IPC.schedEncode ⟨n0, nA, IPC.k0⟩
-    have hk0 : VC.decK t0 = IPC.k0 := by
-      simp [t0, VC.decK, IPC.schedDecode_encode]
-    have hdecN : VC.decN t0 = n0 := by
-      simp [t0, VC.decN, IPC.schedDecode_encode]
-
-    have hle : nA ≤ t0 := le_schedEncode_k0 n0 nA
-    have hPref : Prefix (finitize a.1 nA) (finitize a.1 t0) := Prefix_finitize a.1 hle
-    have hmono : V.F (finitize a.1 nA) ⊆ V.F (finitize a.1 t0) :=
-      V.F_mono hPref (a.2 nA) (a.2 t0)
-    have hmemA : E.W n0 ∈ V.F (finitize a.1 t0) := hmono hpA
-
-    -- 先把 hmemA 提升到 t0+1（因为 needs1b 看的是 t+1）
-    have hPref01 : Prefix (finitize a.1 t0) (finitize a.1 (t0+1)) :=
-  Prefix_finitize_le a.1 (Nat.le_succ t0)
-    have hmono01 : V.F (finitize a.1 t0) ⊆ V.F (finitize a.1 (t0+1)) :=
-  V.F_mono hPref01 (a.2 t0) (a.2 (t0+1))
-    have hmemA1 : E.W n0 ∈ V.F (finitize a.1 (t0+1)) := hmono01 hmemA
-
-    have hneed : needs1b (V := V) (a := a) (W := W) t0 = true :=
-  needs1b_true_of_k0_mem (V := V) (a := a) (W := W) (t := t0) hk0 (by simpa [hdecN] using hmemA1)
-
-    -- Extract `b[t0] = 1` from StepsOK on the prefix of length `t0+1`.
-    have hb0 : T (finitize b.1 (t0 + 1)) = 0 := b.2 (t0 + 1)
-    have hbSteps : StepsOK V a W (finitize b.1 (t0 + 1)) :=
-      (Tlaw_eq_zero_iff (V := V) (a := a) (W := W) (s := finitize b.1 (t0 + 1))).1 hb0 |>.2
-    have hb0 : T (finitize b.1 (t0 + 1)) = 0 := b.2 (t0 + 1)
-    have hbSteps : StepsOK (V := V) (a := a) (W := W) (finitize b.1 (t0+1)) :=
-  (Tlaw_eq_zero_iff (V := V) (a := a) (W := W) (s := finitize b.1 (t0+1))).1 hb0 |>.2
-
-    have hbDigit : b.1 t0 = 1 :=
-  StepsOK_finitize_digit_eq_one (V := V) (a := a) (W := W) (bseq := b.1) (t := t0) hbSteps hneed
-
-    -- Show that at stage `t0+1`, `E.W n0` is inserted into `F` along `b`.
-    let s0 : fin_seq := finitize b.1 t0
-    have hs0 : finitize b.1 (t0+1) = child s0 1 := by
-  -- 先用通用等式，再用 hbDigit 把 b t0 改成 1
-      have : finitize b.1 (t0+1) = child (finitize b.1 t0) (b.1 t0) :=
-    finitize_succ_eq_child (bseq := b.1) (t := t0)
-      simpa [s0, hbDigit] using this
-
-
-  -- 先把 V.F 改写成 concrete 的 FS，再改写成 runState.Fs
-    sorry
-
-  · -- W ∈ Γ_β
-    rcases E.W_surj W with ⟨n0, rfl⟩
-    let t0 : ℕ := IPC.schedEncode ⟨n0, 0, IPC.k0⟩
-    have hk0 : VC.decK t0 = IPC.k0 := by
-      simp [t0, VC.decK, IPC.schedDecode_encode]
-    have hdecN : VC.decN t0 = n0 := by
-      simp [t0, VC.decN, IPC.schedDecode_encode]
-
-    -- 你要的：needs1b V a (E.W n0) t0 = true
-    have hneedW : needs1b (E := E) V a (E.W n0) t0 = true := by
-  -- needs1b = decide(k=k0) && (decide(mem) || decide(eq))
-      unfold needs1b
-  -- 把 decide(k=k0) 变成 true
-      have hk0d : decide (VC.decK t0 = IPC.k0) = true := by
-        exact (_root_.decide_eq_true_iff).2 hk0
-  -- 把 decide(E.W(decN t0) = E.W n0) 变成 true（用 hdecN）
-      have heqd : decide (E.W (VC.decN t0) = E.W n0) = true := by
-    -- 先把等式化简成 rfl
-        have : E.W (VC.decN t0) = E.W n0 := by simpa [hdecN]
-        exact (_root_.decide_eq_true_iff).2 this
-  -- 收尾：true && (_ || true) = true
-      simp [hk0d, heqd]
-
-    have hb0 : T (finitize b.1 (t0 + 1)) = 0 := b.2 (t0 + 1)
-    have hbSteps : StepsOK V a (E.W n0) (finitize b.1 (t0 + 1)) :=
-      (Tlaw_eq_zero_iff (V := V) (a := a) (W := E.W n0) (s := finitize b.1 (t0 + 1))).1 hb0 |>.2
-    -- s1 := finitize (↑b) (t0+1)
-    let bseq : 𝒩 := b.1
-    have hbDigit :
-    (finitize bseq (t0 + 1)).seq ⟨t0, Nat.lt_succ_self t0⟩ = 1 := by
-      exact
-    (digit_one_of_StepsOK_of_needs1b
-      (V := V) (a := a) (W := E.W n0) (bseq := bseq) (t0 := t0)
-      (by simpa [bseq] using hbSteps)
-      hneedW)
-    have hbDigitNat : bseq t0 = 1 := by
-  -- hbDigit : (finitize bseq (t0+1)).seq ⟨t0, _⟩ = 1
-  -- finitize 的 seq 定义就是 bseq i.val
-      simpa [fin_seq.finitize] using hbDigit
-    let s0 : fin_seq := finitize b.1 t0
-    have hs0 : finitize bseq (t0 + 1) = child s0 1 := by
-      have h : finitize bseq (t0 + 1) = child (finitize bseq t0) (bseq t0) :=
-    finitize_succ_eq_child bseq t0
-  -- 用 hbDigitNat 把 bseq t0 改成 1
-      simpa [s0, hbDigitNat] using h
-
-    have hmemB : E.W n0 ∈ V.F (finitize b.1 (t0 + 1)) := by
-      have : E.W n0 ∈ V.F (child s0 1) := by
-        simp [Vconcrete, V, VC.FS, VC.runState, runState_child, VC.step, VC.FStep, s0, hk0, hdecN]
-        let E0 : VC.Enumerations := toConcreteEnum E
-        let st0 : VC.State := VC.runState E0 s0
-
-        have ht0 : st0.t = t0 := by
-  -- runState_t : (runState E0 s).t = s.len
-  -- s0.len = t0
-          have : (VC.runState E0 s0).t = s0.len := by
-            simpa using runState_t (E0 := E0) (s := s0)
-          simpa [st0, s0, fin_seq.finitize_len] using this
-
-        have hk0st : VC.decK st0.t = IPC.k0 := by simpa [st0, ht0] using hk0
-        have hdecNst : VC.decN st0.t = n0 := by simpa [st0, ht0] using hdecN
-
-        have : E.W n0 ∈ V.F (child s0 1) := by
-  -- V = Vconcrete E，所以 V.F = VC.FS E0 = (runState E0 _).Fs
-  -- 用 runState_child 把 runState(child) 化成 step(runState s0) 1
-          have hr : VC.runState E0 (child s0 1) = VC.step E0 (VC.runState E0 s0) 1 :=
-    runState_child (E0 := E0) (s := s0) (q := 1)
-          -- 设 concrete 枚举 & 状态
-          let E0  : VC.Enumerations := toConcreteEnum E
-          let st0 : VC.State := VC.runState E0 s0
-
--- 把 hr 里的 runState E0 s0 改成 st0，得到更好用的版本
-          have hr' : VC.runState E0 (child s0 1) = VC.step E0 st0 1 := by
-            simpa [st0] using hr
+  case right =>
+    cases E.W_surj W with
+    | intro n0 hn0 =>
+        let t0 : Nat := IPC.schedEncode (n0, 0, IPC.k0)
+        have hk0 : VC.decK t0 = IPC.k0 := by
+          simp [t0, VC.decK, IPC.schedDecode_encode]
+        have hdecN : VC.decN t0 = n0 := by
+          simp [t0, VC.decN, IPC.schedDecode_encode]
+        have hneedW : needs1b (E := E) V a (E.W n0) t0 = true := by
+          unfold needs1b
+          have hk0d : decide (VC.decK t0 = IPC.k0) = true := by
+            exact (_root_.decide_eq_true_iff).2 hk0
+          have heqd : decide (E.W (VC.decN t0) = E.W n0) = true := by
+            have hEq : E.W (VC.decN t0) = E.W n0 := by
+              simp [hdecN]
+            exact (_root_.decide_eq_true_iff).2 hEq
+          simp [hk0d, heqd]
+        have hb0 : T (finitize b.1 (t0 + 1)) = 0 := b.2 (t0 + 1)
+        have hbSteps : StepsOK (V := V) (a := a) (W := E.W n0) (finitize b.1 (t0 + 1)) :=
+          (Tlaw_eq_zero_iff (V := V) (a := a) (W := E.W n0) (s := finitize b.1 (t0 + 1))).1
+            (by simpa [hn0] using hb0) |>.2
+        let bseq : NatSeq := b.1
+        have hbDigitNat : bseq t0 = 1 := by
+          exact StepsOK_finitize_digit_eq_one
+            (V := V) (a := a) (W := E.W n0) (bseq := bseq) (t := t0)
+            (by simpa [bseq] using hbSteps) hneedW
+        let s0 : fin_seq := finitize b.1 t0
+        have hs0 : finitize bseq (t0 + 1) = child s0 1 := by
+          have hchild : finitize bseq (t0 + 1) = child (finitize bseq t0) (bseq t0) :=
+            finitize_succ_eq_child bseq t0
+          simpa [s0, hbDigitNat] using hchild
+        have hk0s0 : VC.decK s0.len = IPC.k0 := by
+          simpa [s0, fin_seq.finitize_len] using hk0
+        have hdecNs0 : VC.decN s0.len = n0 := by
+          simpa [s0, fin_seq.finitize_len] using hdecN
+        have hmemChild : E.W n0 ∈ V.F (child s0 1) :=
+          hmem_child_k0_one (s := s0) hk0s0 hdecNs0
+        have hmemB : E.W n0 ∈ V.F (finitize b.1 (t0 + 1)) := by
+          change E.W n0 ∈ V.F (finitize bseq (t0 + 1))
+          rw [hs0]
+          exact hmemChild
+        exact Exists.intro (t0 + 1) (by simpa [hbSeq, hn0] using hmemB)
 
 
-          have hmem_step : E.W n0 ∈ (VC.step E0 st0 1).Fs := by
-  -- step 的 Fs 定义就是 FStep
-            change E.W n0 ∈ VC.FStep E0 st0 1
-  -- 展开 FStep，只保留 k0 分支
-            unfold VC.FStep
-  -- 用 hk0st 把最外层 if 锁定到 then 分支
-  -- 这一步不会产生你之前那种“else 分支的目标”
-            simp [hk0st]
-  -- 现在目标变成：E.W n0 ∈ insert (E.W (VC.decN st0.t)) st0.Fs
-  -- 用 hdecNst 把 decN st0.t 改成 n0，然后 mem_insert_self
-            have ht0' : st0.t = t0 := by
-  -- st0 = runState E0 s0, 且 runState_t 给出 t = len
-              have : st0.t = s0.len := by
-                simpa [st0] using (runState_t (E0 := E0) (s := s0))
-  -- s0 = finitize bseq t0，所以 s0.len = t0
-              simpa [s0, fin_seq.finitize_len] using this
-
-            have hk0st0 : VC.decK st0.t = IPC.k0 := by
-              simpa [ht0'] using hk0
-
-            have hdecNst0 : VC.decN st0.t = n0 := by
-              simpa [ht0'] using hdecN
-
--- 现在你的目标就是 mem(FStep...)；先锁定 if，再改写 decN，再用 mem_insert_self
-            have : E.W n0 ∈
-    (if VC.decK st0.t = IPC.k0 then
-        insert (E0.W (VC.decN st0.t)) st0.Fs
-     else
-        if VC.decK st0.t = IPC.k1 then st0.Fs
-        else
-          match E0.W (VC.decN st0.t) with
-          | A ⋎ B => if st0.prev2 = 1 then insert A st0.Fs else st0.Fs
-          | x => st0.Fs) := by
-  -- 关键：hk0st0 直接把 else 整坨扔掉；hdecNst0 把 E0.W(decN)=E0.W n0；
-  -- 再用 toConcreteEnum 把 E0.W n0 化成 E.W n0；最后 simp 用 mem_insert_self 收尾
-              simp [hk0st0, hdecNst0, E0, toConcreteEnum]
-
-            exact this
-
-
--- 再用 hr' 把 step 换回 runState(child)
-          have : E.W n0 ∈ (VC.runState E0 (child s0 1)).Fs := by
-            simpa [hr'] using hmem_step
-
--- 如果你要的是 V.F (child s0 1)，再用 V=Vconcrete 的定义把 V.F 化成 FS=runState.Fs
-          have : E.W n0 ∈ V.F (child s0 1) := by
-  -- V = Vconcrete E 时，V.F = VC.FS E0，VC.FS 定义就是 runState.Fs
-            simpa [Vconcrete, V, VC.FS, E0] using this
-          exact this
-  -- 现在算 Fs：step 的 Fs 是 FStep
-  -- 并且在 k0 且 q=1 时插入 E0.W(decN st0.t) = E.W n0
-  -- 全程用 simp 即可
-
-        simpa [hs0] using this
-      have : E.W n0 ∈ V.F (finitize bseq (t0 + 1)) := by
-  -- this : E.W n0 ∈ V.F (child s0 1)
-        simpa [hs0] using this
-      exact Finset.mem_def.mpr this
-
-
-
-    refine ⟨t0 + 1, ?_⟩
-    simpa [hbSeq] using hmemB
 namespace StepRules
 
 open GammaRules
@@ -1121,21 +1016,21 @@ lemma AllowedStepb_k0_allow_0_1 (E0 : VC.Enumerations) (st : VC.State) :
       VC.AllowedStepb E0 st 0 = true ∧ VC.AllowedStepb E0 st 1 = true := by
   intro hk0 hF
   unfold VC.AllowedStepb
-  simp [hk0, hF, Finset.decide_eq_true_iff]
+  simp [hk0, hF]
 
 lemma AllowedStepb_k0_force_only_1 (E0 : VC.Enumerations) (st : VC.State) :
     VC.decK st.t = IPC.k0 → VC.Forced0b E0 st = true →
       (VC.AllowedStepb E0 st 1 = true) := by
   intro hk0 hF
   unfold VC.AllowedStepb
-  simp [hk0, hF, Finset.decide_eq_true_iff]
+  simp [hk0, hF]
 
 lemma AllowedStepb_k1_only_0 (E0 : VC.Enumerations) (st : VC.State) :
     VC.decK st.t = IPC.k1 → VC.AllowedStepb E0 st 0 = true := by
   intro hk1
   unfold VC.AllowedStepb
   have hk10 : (IPC.k1 : Fin 3) ≠ IPC.k0 := by decide
-  simp [hk1, hk10, Finset.decide_eq_true_iff]
+  simp [hk1, hk10]
 
 lemma AllowedStepb_k2_default_0 (E0 : VC.Enumerations) (st : VC.State)
     (hNoSplit : ¬ (∃ A B : Form, E0.W (VC.decN st.t) = A ⋎ B ∧ st.prev2 = 1)) :
@@ -1147,19 +1042,20 @@ lemma AllowedStepb_k2_default_0 (E0 : VC.Enumerations) (st : VC.State)
   cases hcase : E0.W (VC.decN st.t) with
   | or A B =>
       by_cases hp : st.prev2 = 1
-      · -- split 情形被 hNoSplit 排除
+      · -- The split case is excluded by `hNoSplit`.
         exfalso
         exact hNoSplit ⟨A, B, hcase, hp⟩
       · -- not split: only q=0 allowed, so q=0 is allowed
-        simp [hk2, hk20, hk21, hcase, hp, Finset.decide_eq_true_iff]
+        simp [hk2, hk20, hk21, hcase, hp]
   | atom n =>
-      simp [hk2, hk20, hk21, hcase, Finset.decide_eq_true_iff]
+      simp [hk2, hk20, hk21, hcase]
   | «I» =>
-      simp [hk2, hk20, hk21, hcase, Finset.decide_eq_true_iff]
+      simp [hk2, hk20, hk21, hcase]
   | imp P Q =>
-      simp [hk2, hk20, hk21, hcase, Finset.decide_eq_true_iff]
+      simp [hk2, hk20, hk21, hcase]
   | and P Q =>
-      simp [hk2, hk20, hk21, hcase, Finset.decide_eq_true_iff]
+      simp [hk2, hk20, hk21, hcase]
+
 lemma FS_child_k0_one
     (E : Enumerations) (s : fin_seq)
     (hk0 : VC.decK s.len = IPC.k0) :
@@ -1168,57 +1064,61 @@ lemma FS_child_k0_one
     insert (E.W (VC.decN s.len)) (VC.FS (toConcreteEnum E) s) := by
 
   let E0 : VC.Enumerations := toConcreteEnum E
-  let st : VC.State := VC.runState E0 s
+  have hlen : (child s 1).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 1).len := by
+    simp[hlen]
+  have hPred : s.len <= (child s 1).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 1) := VC.Prefix_child s 1
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 1) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 1) s.len hPred
+          = VC.runStateAux E0 (child s 1) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 1) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 1) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk0Prefix : VC.decK (VC.runStateAux E0 (child s 1) s.len hPred).t = IPC.k0 := by
+    simpa [htPrefix] using hk0
+  have hdecNPrefix : VC.decN (VC.runStateAux E0 (child s 1) s.len hPred).t = VC.decN s.len := by
+    simp [htPrefix]
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 1) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 1) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+  have hDigit :
+      (child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 1 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 1)).Fs = insert (E.W (VC.decN s.len)) (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = insert (E.W (VC.decN s.len)) (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 1) s.len hPred) 1 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_pos hk0Prefix]
+    rw [hdecNPrefix, hFsPrefix]
+    simp [E0, toConcreteEnum]
 
-  -- st.t = s.len
-  have ht : st.t = s.len := by
-    simpa [st] using (runState_t (E0 := E0) (s := s))
-
-  -- 把 hk0 搬到 st.t 上
-  have hk0st : VC.decK st.t = IPC.k0 := by
-    simpa [ht] using hk0
-
-  -- 用 runState_child：runState(child) = step(runState s) 1
-  have hr : VC.runState E0 (child s 1) = VC.step E0 (VC.runState E0 s) 1 :=
-    runState_child (E0 := E0) (s := s) (q := 1)
-
-  -- 取 Fs 字段
-  have hFsEq :
-      (VC.runState E0 (child s 1)).Fs = (VC.step E0 (VC.runState E0 s) 1).Fs := by
-    simpa using congrArg (fun st => st.Fs) hr
-
-  -- 计算 step 的 Fs
-  have hFsStep :
-    (VC.step E0 (VC.runState E0 s) 1).Fs
-      =
-    insert (E.W (VC.decN s.len)) (VC.runState E0 s).Fs := by
-  -- 关键：把“展开的枚举 record”识别成 E0
-    have hE0 :
-      ({ W := E.W
-       , d := E.d
-       , W_surj := E.W_surj
-       , d_sound := E.d_sound
-       , d_complete := E.d_complete } : VC.Enumerations) = E0 := by
-    -- E0 := toConcreteEnum E
-      simp [E0, toConcreteEnum]
-
-  -- 现在把 step/FStep 展开，并用 hE0 把 runState{..} 改成 runState E0
-  -- 然后 hk0run 锁死 if，hdecNrun 改写 decN
-    try rw [hE0]
-    have ht_run : (VC.runState E0 s).t = s.len := by
-      simpa using runState_t (E0 := E0) (s := s)
-    have hk0run : VC.decK (VC.runState E0 s).t = IPC.k0 := by
-      simpa [st, ht_run] using hk0st
-    simp [VC.step, VC.FStep, hk0run, ht_run, E0, toConcreteEnum]
-    rw [hE0]
-    have hdecNrun : VC.decN (VC.runState E0 s).t = VC.decN s.len := by
-      simpa [st, ht]
-    simp [hk0run, hdecNrun]
-
-
-  -- 把 FS 展开成 runState.Fs 并收尾
-  -- FS E0 x = (runState E0 x).Fs
-  simp [VC.FS, E0, hFsEq, hFsStep]
+  simpa [VC.FS, E0] using hFsChild
 
 lemma Vconcrete_F_child_k0_one
     (E : Enumerations) (s : fin_seq)
@@ -1226,14 +1126,16 @@ lemma Vconcrete_F_child_k0_one
     (Vconcrete E).F (child s 1)
       =
     insert (E.W (VC.decN s.len)) ((Vconcrete E).F s) := by
-  -- 展开 Vconcrete 的 F：就是 FS (toConcreteEnum E)
-  -- 然后用上面 FS lemma
+  -- Unfold the `F` field of `Vconcrete`; it is exactly `FS (toConcreteEnum E)`.
+  -- Then apply the previously proved `FS` lemma.
   simpa [Vconcrete] using (FS_child_k0_one (E := E) (s := s) hk0)
 
-/-- Prop 版：k0 且（mem 或 eq），注意 mem 用的是 (t+1) 前缀，和 needs1b 一致。 -/
+/-- Propositional version of the `needs1` predicate: `k0` together with `(mem ∨ eq)`, using the `(t+1)`-prefix exactly as in `needs1b`. -/
 def needs1 {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) : Prop :=
   VC.decK t = IPC.k0 ∧
     (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1)) ∨ E.W (VC.decN t) = W)
+
+
 lemma bool_and_eq_true_iff (x y : Bool) : (x && y = true) ↔ (x = true ∧ y = true) := by
   cases x <;> cases y <;> simp
 
@@ -1242,71 +1144,43 @@ lemma bool_or_eq_true_iff (x y : Bool) : (x || y = true) ↔ (x = true ∨ y = t
 
 
 lemma needs1b_eq_true_iff_needs1
-    {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) :
-    needs1b (V := V) (a := a) (W := W) t = true ↔ needs1 (V := V) (a := a) (W := W) t := by
+    {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : Nat) :
+    Iff (needs1b (V := V) (a := a) (W := W) t = true) (needs1 (V := V) (a := a) (W := W) t) := by
 
   unfold needs1b needs1
   constructor
-  · intro hb
-    -- hb : decide(k0) && (decide(mem) || decide(eq)) = true
-    have hAnd :
-        decide (VC.decK t = IPC.k0) = true ∧
-        (decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) ||
-         decide (E.W (VC.decN t) = W)) = true :=
-      by exact Bool.and_eq_true_iff.mp hb
-
-    have hk0 : VC.decK t = IPC.k0 :=
-      (_root_.decide_eq_true_iff).1 hAnd.1
-
-    let P : Prop := (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1)))
-    let Q : Prop := (E.W (VC.decN t) = W)
-
-    have hOrBool :
-        (decide P || decide Q) = true := by
-      simpa [P, Q] using hAnd.2
-
-    have hOr :
-        decide P = true ∨ decide Q = true := by
-      -- 对 decide P 分两种情况
-      cases hm : decide P with
-      | true =>
-          left
-          -- hm : decide P = true
-          exact Bool.eq_false_imp_eq_true.mp (congrFun rfl)
-      | false =>
-          right
-          -- hOrBool : (false || decide Q) = true  ⇒ decide Q = true
-          -- 这里用 simpa 不会触发 “decide_eq_true_iff” 变 Prop，因为我们没有把 decide 展开成 Prop
-          simpa [hm] using hOrBool
+  case mp =>
+    intro hb
+    have hAnd := Bool.and_eq_true_iff.mp hb
+    have hk0 : VC.decK t = IPC.k0 := (_root_.decide_eq_true_iff).1 hAnd.1
     have hmem_or_eq :
-        (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1)) ∨ E.W (VC.decN t) = W) := by
-      cases hOr with
-      | inl hm =>
-          left
-          exact (_root_.decide_eq_true_iff).1 hm
-      | inr he =>
-          right
-          exact (_root_.decide_eq_true_iff).1 he
+        Or (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) (E.W (VC.decN t) = W) := by
+      cases hmem : decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) with
+      | true =>
+          exact Or.inl ((_root_.decide_eq_true_iff).1 hmem)
+      | false =>
+          have heq : decide (E.W (VC.decN t) = W) = true := by
+            simpa [hmem] using hAnd.2
+          exact Or.inr ((_root_.decide_eq_true_iff).1 heq)
+    exact And.intro hk0 hmem_or_eq
 
-    exact ⟨hk0, hmem_or_eq⟩
-
-  · rintro ⟨hk0, hmem_or_eq⟩
+  case mpr =>
+    intro hNeeds
     have hk0d : decide (VC.decK t = IPC.k0) = true :=
-      (_root_.decide_eq_true_iff).2 hk0
-
-    have hOr : (decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) ||
-                decide (E.W (VC.decN t) = W)) = true := by
-      cases hmem_or_eq with
+      (_root_.decide_eq_true_iff).2 hNeeds.1
+    have hOr :
+        (decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) ||
+         decide (E.W (VC.decN t) = W)) = true := by
+      cases hNeeds.2 with
       | inl hm =>
           have hm' : decide (E.W (VC.decN t) ∈ V.F (finitize a.1 (t + 1))) = true :=
             (_root_.decide_eq_true_iff).2 hm
-          exact Bool.or_inl hm'
+          simp [hm']
       | inr he =>
           have he' : decide (E.W (VC.decN t) = W) = true :=
             (_root_.decide_eq_true_iff).2 he
-          exact Bool.or_inr he'
-
-    exact Bool.and_intro hk0d hOr
+          simp [he']
+    exact Bool.and_eq_true_iff.mpr (And.intro hk0d hOr)
 
 lemma k0_of_needs1b_true
     {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) :
@@ -1328,28 +1202,59 @@ lemma Fs_child_k0_zero_eq
       = (VC.runState (toConcreteEnum E) s).Fs := by
 
   let E0 : VC.Enumerations := toConcreteEnum E
+  have hlen : (child s 0).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 0).len := by
+    simp [hlen]
+  have hPred : s.len <= (child s 0).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 0) := VC.Prefix_child s 0
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 0) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 0) s.len hPred
+          = VC.runStateAux E0 (child s 0) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 0) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk0Prefix : VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t = IPC.k0 := by
+    simpa [htPrefix] using hk0
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 0) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+  have hDigit :
+      (child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 0 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 0)).Fs = (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 0) s.len hPred) 0 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_pos hk0Prefix]
+    simp [hFsPrefix]
 
-  -- runState(child) = step(runState s) 0
-  have hr :
-      VC.runState E0 (child s 0) = VC.step E0 (VC.runState E0 s) 0 :=
-    runState_child (E0 := E0) (s := s) (q := 0)
+  simpa [E0] using hFsChild
 
-  -- 先改写成 step
-  rw [hr]
-  -- step 的 Fs 就是 FStep
-  simp [VC.step]
-
-  -- 现在目标变成：FStep E0 (runState E0 s) 0 = (runState E0 s).Fs
-  have ht : (VC.runState E0 s).t = s.len := by
-    simpa using runState_t (E0 := E0) (s := s)
-
-  have hk0st : VC.decK (VC.runState E0 s).t = IPC.k0 := by
-    simpa [ht] using hk0
-
-  -- 展开 FStep：k0 分支下 q=0 -> else -> st.Fs
-  -- 这里不会再产生 “¬k0 → ¬k1 → …” 的目标
-  simp [VC.FStep, hk0st]
-  exact Finset.val_inj.mp rfl
 lemma Fs_child_k1_zero_eq
     (E : Enumerations) (s : fin_seq)
     (hk1 : VC.decK s.len = IPC.k1) :
@@ -1357,48 +1262,96 @@ lemma Fs_child_k1_zero_eq
       = (VC.runState (toConcreteEnum E) s).Fs := by
 
   let E0 : VC.Enumerations := toConcreteEnum E
-  have hr :
-      VC.runState E0 (child s 0) = VC.step E0 (VC.runState E0 s) 0 :=
-    runState_child (E0 := E0) (s := s) (q := 0)
+  have hlen : (child s 0).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 0).len := by
+    simp[hlen]
+  have hPred : s.len <= (child s 0).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 0) := VC.Prefix_child s 0
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 0) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 0) s.len hPred
+          = VC.runStateAux E0 (child s 0) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 0) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk1Prefix : VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t = IPC.k1 := by
+    simpa [htPrefix] using hk1
+  have hk0ne : Ne (VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t) IPC.k0 := by
+    intro hk0Prefix
+    have : (IPC.k1 : Fin 3) = IPC.k0 := by
+      calc
+        (IPC.k1 : Fin 3)
+            = VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t := by
+                symm
+                exact hk1Prefix
+        _ = IPC.k0 := hk0Prefix
+    exact (show Ne (IPC.k1 : Fin 3) IPC.k0 by decide) this
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 0) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+  have hDigit :
+      (child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 0 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 0)).Fs = (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 0) s.len hPred) 0 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_neg hk0ne]
+    rw [if_pos hk1Prefix]
+    simp [hFsPrefix]
 
-  have ht : (VC.runState E0 s).t = s.len := by
-    simpa using runState_t (E0 := E0) (s := s)
+  simpa [E0] using hFsChild
 
-  have hk1st : VC.decK (VC.runState E0 s).t = IPC.k1 := by
-    simpa [ht] using hk1
-
-  -- step 的 Fs 是 FStep；k1 分支 FStep = st.Fs（不变）
-  simp [hr, VC.step, VC.FStep, hk1st, E0, ht]
-  exact fun a a_1 =>
-    VeldmanConcrete.FStep.match_1.eq_2 (fun x => Finset Form)
-      ((toConcreteEnum E).W (VeldmanConcrete.decN s.len))
-      (fun A B => (VeldmanConcrete.runState (toConcreteEnum E) s).Fs)
-      (fun x => (VeldmanConcrete.runState (toConcreteEnum E) s).Fs) fun A B x => a_1 hk1
 lemma decK_eq_k2_of_ne_k0_k1 (t : ℕ)
     (h0 : VC.decK t ≠ IPC.k0) (h1 : VC.decK t ≠ IPC.k1) :
     VC.decK t = IPC.k2 := by
-  -- 先把 val 分成 0/1/2（三分法）
+  -- First split the underlying value into the three cases `0`, `1`, and `2`.
   have hcases :
       (VC.decK t).val = 0 ∨ (VC.decK t).val = 1 ∨ (VC.decK t).val = 2 := by
     have : (VC.decK t).val < 3 := (VC.decK t).isLt
     omega
-  -- 分情况排除 0/1，剩下 2
+  -- Exclude the `0` and `1` cases separately; the remainder is `2`.
   cases hcases with
   | inl h0val =>
       have : VC.decK t = IPC.k0 := by
         apply Fin.ext
-        simpa [IPC.k0, h0val]
+        simp [IPC.k0, h0val]
       exact False.elim (h0 this)
   | inr h12 =>
       cases h12 with
       | inl h1val =>
           have : VC.decK t = IPC.k1 := by
             apply Fin.ext
-            simpa [IPC.k1, h1val]
+            simp [IPC.k1, h1val]
           exact False.elim (h1 this)
       | inr h2val =>
           apply Fin.ext
-          simpa [IPC.k2, h2val]
+          simp [IPC.k2, h2val]
+
 lemma eq_one_of_needs1b_true_of_decK_ne_k0
     {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t q : ℕ)
     (hk0ne : VC.decK t ≠ IPC.k0) :
@@ -1409,19 +1362,19 @@ lemma eq_one_of_needs1b_true_of_decK_ne_k0
   exact False.elim (hk0ne hk0)
 
 lemma two_le_of_decK_eq_k2 (t : ℕ) (hk2 : VC.decK t = IPC.k2) : 2 ≤ t := by
-  -- 从 hk2 得到 (decK t).val = 2
+  -- Extract `(decK t).val = 2` from `hk2`.
   have hval : (VC.decK t).val = 2 := by
-    -- Fin.val 等于 .val
+    -- This is just equality of the underlying `Fin.val` components.
     simpa [IPC.k2] using congrArg Fin.val hk2
 
-  -- decK t = (schedDecode t).2.2，而 schedDecode 用 r := t % 3
-  -- 所以 (decK t).val = t % 3
+  -- Since `decK t = (schedDecode t).2.2` and `schedDecode` uses `r := t % 3`,
+  -- we obtain `(decK t).val = t % 3`.
   have hmod : t % 3 = 2 := by
-    -- 展开 decK / schedDecode
-    -- 关键：schedDecode 的第三分量就是 ⟨t%3, _⟩
+    -- Unfold `decK` and `schedDecode`.
+    -- Key fact: the third component of `schedDecode` is exactly `⟨t % 3, _⟩`.
     simpa [VC.decK, IPC.schedDecode] using hval
 
-  -- 反证：若 t < 2，则 t < 3，从而 t % 3 = t，与 hmod 矛盾
+  -- Contradiction argument: if `t < 2`, then `t < 3`, hence `t % 3 = t`, contradicting `hmod`.
   by_contra hle
   have ht2 : t < 2 := Nat.lt_of_not_ge hle
   have ht3 : t < 3 := lt_trans ht2 (by decide : 2 < 3)
@@ -1431,50 +1384,32 @@ lemma two_le_of_decK_eq_k2 (t : ℕ) (hk2 : VC.decK t = IPC.k2) : 2 ≤ t := by
     simpa [hmodt] using hmod
   exact (Nat.ne_of_lt ht2) htEq
 
-/-- 如果 `decK t = k2`，那么两步之前一定是 `k0`。 -/
-lemma decK_sub2_of_decK_eq_k2 (t : ℕ) (ht2 : 2 ≤ t) (hk2 : VC.decK t = IPC.k2) :
+/-- If `decK t = k2`, then two steps earlier we were necessarily in the corresponding `k0` phase. -/
+lemma decK_sub2_of_decK_eq_k2 (t : Nat) (_ : 2 <= t) (hk2 : VC.decK t = IPC.k2) :
     VC.decK (t - 2) = IPC.k0 := by
 
-  -- 1) 从 hk2 得到 t % 3 = 2
   have hmod2 : t % 3 = 2 := by
-    have : (VC.decK t).val = 2 := by
+    have hval : (VC.decK t).val = 2 := by
       simpa [IPC.k2] using congrArg Fin.val hk2
-    -- decK 的 val 就是 (t % 3)
-    simpa [VC.decK, IPC.schedDecode] using this
+    simpa [VC.decK, IPC.schedDecode] using hval
 
-  -- 2) 用 mod_add_div 得到 t = t%3 + 3*(t/3)，再代入 t%3=2
   have ht_eq : t = 2 + 3 * (t / 3) := by
-    -- Nat.mod_add_div : t % 3 + 3 * (t / 3) = t
     have h := Nat.mod_add_div t 3
-    -- h.symm : t = t%3 + 3*(t/3)
-    -- 再把 t%3 换成 2，并整理一下加法顺序
     simpa [hmod2, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using h.symm
 
-  -- 3) 所以 t-2 = 3*(t/3)
   have hsub : t - 2 = 3 * (t / 3) := by
-    calc
-      t - 2 = (2 + 3 * (t / 3)) - 2 := by rw [ht_eq];simp;rw[← ht_eq]
-      _ = 3 * (t / 3) := Nat.add_sub_cancel_left 2 (3 * (t / 3))
+    conv_lhs => rw [ht_eq]
+    exact Nat.add_sub_cancel_left 2 (3 * (t / 3))
 
-  -- 4) (t-2) % 3 = 0
   have hmod0 : (t - 2) % 3 = 0 := by
-    -- 用 hsub 改写成 (3*(t/3))%3
-    -- 再用 add_mul_mod_self_left 证明它等于 0
-    -- (0 + 3*(t/3)) % 3 = 0 % 3
     have h := Nat.add_mul_mod_self_left 0 3 (t / 3)
-    -- h : (0 + 3*(t/3)) %3 = 0%3
-    -- 左边化简成 (3*(t/3))%3
-    -- 右边化简成 0
-    simpa [hsub, Nat.zero_add] using h
+    omega
 
-  -- 5) decK(t-2) 的 val = (t-2)%3 = 0，所以等于 k0
-  apply Fin.ext
-  -- Fin.ext 只要比较 val
-  -- (decK (t-2)).val = (t-2)%3
-  -- (k0).val = 0
-  simpa [VC.decK, IPC.schedDecode, IPC.k0, hmod0]
+  apply Fin.eq_of_val_eq
+  change (t - 2) % 3 = 0
+  exact hmod0
 
-/-- k2 且调度公式是析取，但 prev2 ≠ 1（不在 split 模式）时，q=0 一定 Allowed。 -/
+/-- In the `k2` case, if the scheduled formula is a disjunction but `prev2 ≠ 1` (so we are not in split mode), then `q = 0` is always allowed. -/
 lemma AllowedStepb_k2_or_prev2_ne_one_allow_0
     (E : Enumerations) (s : fin_seq) (A B : Form)
     (hk2 : VC.decK s.len = IPC.k2)
@@ -1496,13 +1431,13 @@ lemma AllowedStepb_k2_or_prev2_ne_one_allow_0
     simpa [hk2st] using (by decide : (IPC.k2 : Fin 3) ≠ IPC.k1)
 
   have hpst : st.prev2 ≠ 1 := by
-    -- 把 runState (toConcreteEnum E) s 改写成 st
+    -- Rewrite `runState (toConcreteEnum E) s` as `st`.
     simpa [st, E0] using hp
 
   have hWst : E0.W (VC.decN st.t) = A ⋎ B := by
     simpa [E0, toConcreteEnum, ht] using hW
 
-  -- 关键：这里一定要让 simp 看到 st/E0 的定义，否则 hk0ne/hk1ne/hpst/hWst 用不上
+  -- Key point: `simp` must see the definitions of `st` and `E0`, otherwise it cannot use `hk0ne`, `hk1ne`, `hpst`, or `hWst`.
   unfold VC.AllowedStepb
   simp [E0, st, hk0ne, hk1ne, hWst, hpst]
 
@@ -1514,7 +1449,8 @@ lemma runStateAux_Fs_len
       VC.runStateAux E0 s s.len h = VC.runStateAux E0 s s.len le_rfl :=
     VC.runStateAux_proof_irrel (E := E0) (s := s) (n := s.len) h le_rfl
   have hEqFs := congrArg (fun st : VC.State => st.Fs) hEq
-  simpa [VC.runState] using hEqFs
+  simp [VC.runState]
+
 lemma AllowedStepb_k2_split_q1
     (E0 : VC.Enumerations) (st : VC.State) (A B : Form)
     (hk2 : VC.decK st.t = IPC.k2)
@@ -1524,7 +1460,7 @@ lemma AllowedStepb_k2_split_q1
   unfold VC.AllowedStepb
   have hk20 : (IPC.k2 : Fin 3) ≠ IPC.k0 := by decide
   have hk21 : (IPC.k2 : Fin 3) ≠ IPC.k1 := by decide
-  -- 这里不要再用 Finset.decide_eq_true_iff；直接 simp 就能把 decide 算掉
+  -- Do not use `Finset.decide_eq_true_iff` here; plain `simp` already evaluates the needed `decide` terms.
   simp [hk2, hk20, hk21, hW, hp]
 
 lemma AllowedStepb_k2_split_q2
@@ -1541,78 +1477,171 @@ lemma AllowedStepb_k2_split_q2
 lemma Fs_child_k2_split_one_eq
     (E : Enumerations) (s : fin_seq) (A B : Form)
     (hk2 : VC.decK s.len = IPC.k2)
-    (hW  : E.W (VC.decN s.len) = A ⋎ B)
+    (hW  : E.W (VC.decN s.len) = Form.or A B)
     (hp  : (VC.runState (toConcreteEnum E) s).prev2 = 1) :
     (VC.runState (toConcreteEnum E) (child s 1)).Fs
       = insert A (VC.runState (toConcreteEnum E) s).Fs := by
   let E0 : VC.Enumerations := toConcreteEnum E
-  let st : VC.State := VC.runState E0 s
+  have hlen : (child s 1).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 1).len := by
+    simp [hlen]
+  have hPred : s.len <= (child s 1).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 1) := VC.Prefix_child s 1
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 1) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 1) s.len hPred
+          = VC.runStateAux E0 (child s 1) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 1) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 1) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk2Prefix : VC.decK (VC.runStateAux E0 (child s 1) s.len hPred).t = IPC.k2 := by
+    simpa [htPrefix] using hk2
+  have hk20 : Ne (IPC.k2 : Fin 3) IPC.k0 := by decide
+  have hk21 : Ne (IPC.k2 : Fin 3) IPC.k1 := by decide
+  have hk0ne : Ne (VC.decK (VC.runStateAux E0 (child s 1) s.len hPred).t) IPC.k0 := by
+    intro hk0Prefix
+    exact hk20 (hk2Prefix.symm.trans hk0Prefix)
+  have hk1ne : Ne (VC.decK (VC.runStateAux E0 (child s 1) s.len hPred).t) IPC.k1 := by
+    intro hk1Prefix
+    exact hk21 (hk2Prefix.symm.trans hk1Prefix)
+  have hdecNPrefix :
+      VC.decN (VC.runStateAux E0 (child s 1) s.len hPred).t = VC.decN s.len := by
+    simp [htPrefix]
+  have hWPrefix :
+      E0.W (VC.decN (VC.runStateAux E0 (child s 1) s.len hPred).t) = Form.or A B := by
+    simpa [E0, hdecNPrefix] using hW
+  have hpPrefix :
+      (VC.runStateAux E0 (child s 1) s.len hPred).prev2 = 1 := by
+    calc
+      (VC.runStateAux E0 (child s 1) s.len hPred).prev2
+          = (VC.runState E0 s).prev2 := by
+              simpa using congrArg (fun st => st.prev2) hEqPrefix
+      _ = 1 := by
+            simpa [E0] using hp
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 1) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 1) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 1) s.len _ _
+  have hDigit :
+      (child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 1 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 1)).Fs = insert A (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 1) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 1).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = insert A (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 1) s.len hPred) 1 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_neg hk0ne]
+    rw [if_neg hk1ne]
+    simp [hWPrefix, hpPrefix, hFsPrefix]
 
-  have ht : st.t = s.len := by
-    simpa [st, E0] using (runState_t (E0 := E0) (s := s))
-
-  have hk2st : VC.decK st.t = IPC.k2 := by
-    simpa [ht] using hk2
-
-  have hk20 : (IPC.k2 : Fin 3) ≠ IPC.k0 := by decide
-  have hk21 : (IPC.k2 : Fin 3) ≠ IPC.k1 := by decide
-  have hk0st : ¬ VC.decK st.t = IPC.k0 := by simpa [hk2st] using hk20
-  have hk1st : ¬ VC.decK st.t = IPC.k1 := by simpa [hk2st] using hk21
-
-  have hWst : E0.W (VC.decN st.t) = A ⋎ B := by
-    simpa [E0, ht] using hW
-
-  have hpst : st.prev2 = 1 := by
-    simpa [st, E0] using hp
-
-  have hr :
-      VC.runState E0 (child s 1) = VC.step E0 (VC.runState E0 s) 1 :=
-    runState_child (E0 := E0) (s := s) (q := 1)
-  have hr' : VC.runState E0 (child s 1) = VC.step E0 st 1 := by
-    simpa [st] using hr
-
-  rw [hr']
-  simp [VC.step, VC.FStep, hk0st, hk1st, hWst, hpst, st]
-  exact Finset.val_inj.mp rfl
+  simpa [E0] using hFsChild
 
 
 lemma Fs_child_k2_split_two_eq
     (E : Enumerations) (s : fin_seq) (A B : Form)
     (hk2 : VC.decK s.len = IPC.k2)
-    (hW  : E.W (VC.decN s.len) = A ⋎ B)
+    (hW  : E.W (VC.decN s.len) = Form.or A B)
     (hp  : (VC.runState (toConcreteEnum E) s).prev2 = 1) :
     (VC.runState (toConcreteEnum E) (child s 2)).Fs
       = insert B (VC.runState (toConcreteEnum E) s).Fs := by
   let E0 : VC.Enumerations := toConcreteEnum E
-  let st : VC.State := VC.runState E0 s
+  have hlen : (child s 2).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 2).len := by
+    simp [hlen]
+  have hPred : s.len <= (child s 2).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 2) := VC.Prefix_child s 2
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 2) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 2) s.len hPred
+          = VC.runStateAux E0 (child s 2) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 2) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 2) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 2) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk2Prefix : VC.decK (VC.runStateAux E0 (child s 2) s.len hPred).t = IPC.k2 := by
+    simpa [htPrefix] using hk2
+  have hk20 : Ne (IPC.k2 : Fin 3) IPC.k0 := by decide
+  have hk21 : Ne (IPC.k2 : Fin 3) IPC.k1 := by decide
+  have hk0ne : Ne (VC.decK (VC.runStateAux E0 (child s 2) s.len hPred).t) IPC.k0 := by
+    intro hk0Prefix
+    exact hk20 (hk2Prefix.symm.trans hk0Prefix)
+  have hk1ne : Ne (VC.decK (VC.runStateAux E0 (child s 2) s.len hPred).t) IPC.k1 := by
+    intro hk1Prefix
+    exact hk21 (hk2Prefix.symm.trans hk1Prefix)
+  have hdecNPrefix :
+      VC.decN (VC.runStateAux E0 (child s 2) s.len hPred).t = VC.decN s.len := by
+    simp [htPrefix]
+  have hWPrefix :
+      E0.W (VC.decN (VC.runStateAux E0 (child s 2) s.len hPred).t) = Form.or A B := by
+    simpa [E0, hdecNPrefix] using hW
+  have hpPrefix :
+      (VC.runStateAux E0 (child s 2) s.len hPred).prev2 = 1 := by
+    calc
+      (VC.runStateAux E0 (child s 2) s.len hPred).prev2
+          = (VC.runState E0 s).prev2 := by
+              simpa using congrArg (fun st => st.prev2) hEqPrefix
+      _ = 1 := by
+            simpa [E0] using hp
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 2) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 2) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 2) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 2) s.len _ _
+  have hDigit :
+      (child s 2).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 2 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 2)).Fs = insert B (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 2) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 2).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = insert B (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 2) s.len hPred) 2 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_neg hk0ne]
+    rw [if_neg hk1ne]
+    simp [hWPrefix, hpPrefix, hFsPrefix]
 
-  have ht : st.t = s.len := by
-    simpa [st, E0] using (runState_t (E0 := E0) (s := s))
-
-  have hk2st : VC.decK st.t = IPC.k2 := by
-    simpa [ht] using hk2
-
-  have hk20 : (IPC.k2 : Fin 3) ≠ IPC.k0 := by decide
-  have hk21 : (IPC.k2 : Fin 3) ≠ IPC.k1 := by decide
-  have hk0st : ¬ VC.decK st.t = IPC.k0 := by simpa [hk2st] using hk20
-  have hk1st : ¬ VC.decK st.t = IPC.k1 := by simpa [hk2st] using hk21
-
-  have hWst : E0.W (VC.decN st.t) = A ⋎ B := by
-    simpa [E0, ht] using hW
-
-  have hpst : st.prev2 = 1 := by
-    simpa [st, E0] using hp
-
-  have hr :
-      VC.runState E0 (child s 2) = VC.step E0 (VC.runState E0 s) 2 :=
-    runState_child (E0 := E0) (s := s) (q := 2)
-  have hr' : VC.runState E0 (child s 2) = VC.step E0 st 2 := by
-    simpa [st] using hr
-
-  rw [hr']
-  simp [VC.step, VC.FStep, hk0st, hk1st, hWst, hpst, st]
-  exact Finset.val_inj.mp rfl
-
+  simpa [E0] using hFsChild
 lemma Fs_child_k2_split_one_eq_aux
     (E : Enumerations) (s : fin_seq) (A B : Form)
     (hk2 : VC.decK s.len = IPC.k2)
@@ -1652,53 +1681,82 @@ lemma Fs_child_k2_split_two_eq_aux
     simpa using (runStateAux_Fs_len (E0 := toConcreteEnum E) (s := s) (h := h2))
   rw [hL, hR]
   simpa using (Fs_child_k2_split_two_eq (E := E) (s := s) (A := A) (B := B) hk2 hW hp)
+
 lemma Fs_child_k2_zero_eq
     (E : Enumerations) (s : fin_seq)
     (hk2 : VC.decK s.len = IPC.k2) :
     (VC.runState (toConcreteEnum E) (child s 0)).Fs
       = (VC.runState (toConcreteEnum E) s).Fs := by
   let E0 : VC.Enumerations := toConcreteEnum E
+  have hlen : (child s 0).len = s.len.succ := by
+    simp [child, fin_seq.extend, fin_seq.singleton, Nat.succ_eq_add_one]
+  have hSucc : s.len.succ <= (child s 0).len := by
+    simp [hlen]
+  have hPred : s.len <= (child s 0).len := Nat.le_of_succ_le hSucc
+  have hPref : Prefix s (child s 0) := VC.Prefix_child s 0
+  have hEqPrefix :
+      VC.runStateAux E0 (child s 0) s.len hPred = VC.runState E0 s := by
+    calc
+      VC.runStateAux E0 (child s 0) s.len hPred
+          = VC.runStateAux E0 (child s 0) s.len
+              (Nat.le_trans le_rfl (VC.Prefix_len_le hPref)) := by
+                exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+      _ = VC.runStateAux E0 s s.len le_rfl :=
+            VC.runStateAux_eq_of_Prefix (E := E0) (h := hPref) s.len le_rfl
+      _ = VC.runState E0 s := by
+            rw [VC.runState]
+  have htPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).t = s.len := by
+    calc
+      (VC.runStateAux E0 (child s 0) s.len hPred).t
+          = (VC.runState E0 s).t := by
+              simpa using congrArg (fun st => st.t) hEqPrefix
+      _ = s.len := by
+            simpa using runState_t (E0 := E0) (s := s)
+  have hk2Prefix : VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t = IPC.k2 := by
+    simpa [htPrefix] using hk2
+  have hk20 : Ne (IPC.k2 : Fin 3) IPC.k0 := by decide
+  have hk21 : Ne (IPC.k2 : Fin 3) IPC.k1 := by decide
+  have hk0ne : Ne (VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t) IPC.k0 := by
+    intro hk0Prefix
+    exact hk20 (hk2Prefix.symm.trans hk0Prefix)
+  have hk1ne : Ne (VC.decK (VC.runStateAux E0 (child s 0) s.len hPred).t) IPC.k1 := by
+    intro hk1Prefix
+    exact hk21 (hk2Prefix.symm.trans hk1Prefix)
+  have hFsPrefix :
+      (VC.runStateAux E0 (child s 0) s.len hPred).Fs = (VC.runState E0 s).Fs := by
+    simpa using congrArg (fun st => st.Fs) hEqPrefix
+  have hpi :
+      VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc)
+        = VC.runStateAux E0 (child s 0) s.len hPred := by
+    exact VC.runStateAux_proof_irrel (E := E0) (s := child s 0) s.len _ _
+  have hDigit :
+      (child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)) = 0 := by
+    simp [child, fin_seq.extend, fin_seq.singleton]
+  have hFsChild :
+      (VC.runState E0 (child s 0)).Fs = (VC.runState E0 s).Fs := by
+    change
+      (VC.step E0
+        (VC.runStateAux E0 (child s 0) s.len (Nat.le_of_succ_le hSucc))
+        ((child s 0).seq (Fin.mk s.len (Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc)))).Fs
+          = (VC.runState E0 s).Fs
+    rw [hpi, hDigit]
+    change VC.FStep E0 (VC.runStateAux E0 (child s 0) s.len hPred) 0 = _
+    unfold VC.FStep
+    dsimp
+    rw [if_neg hk0ne]
+    rw [if_neg hk1ne]
+    have hmatch :
+        (match E0.W (VC.decN (VC.runStateAux E0 (child s 0) s.len hPred).t) with
+          | Form.or A B => (VC.runStateAux E0 (child s 0) s.len hPred).Fs
+          | x => (VC.runStateAux E0 (child s 0) s.len hPred).Fs)
+          = (VC.runStateAux E0 (child s 0) s.len hPred).Fs := by
+      cases hForm : E0.W (VC.decN (VC.runStateAux E0 (child s 0) s.len hPred).t) <;> simp
+    simpa [hFsPrefix] using hmatch
 
-  -- runState(child) = step(runState s) 0
-  have hr : VC.runState E0 (child s 0) = VC.step E0 (VC.runState E0 s) 0 :=
-    runState_child (E0 := E0) (s := s) (q := 0)
+  simpa [E0] using hFsChild
 
-  -- 改写成 step
-  rw [hr]
-  simp [VC.step]
-
-  -- 把 hk2 从 s.len 推到 (runState E0 s).t
-  have ht : (VC.runState E0 s).t = s.len := by
-    simpa using runState_t (E0 := E0) (s := s)
-
-  have hk2st : VC.decK (VC.runState E0 s).t = IPC.k2 := by
-    simpa [ht] using hk2
-
-  -- 由 k2 得到 not k0 / not k1
-  have hk0ne : ¬ VC.decK (VC.runState E0 s).t = IPC.k0 := by
-    intro h
-    have : (IPC.k2 : Fin 3) = IPC.k0 := by simpa [hk2st] using h
-    exact (by decide : (IPC.k2 : Fin 3) ≠ IPC.k0) this
-
-  have hk1ne : ¬ VC.decK (VC.runState E0 s).t = IPC.k1 := by
-    intro h
-    have : (IPC.k2 : Fin 3) = IPC.k1 := by simpa [hk2st] using h
-    exact (by decide : (IPC.k2 : Fin 3) ≠ IPC.k1) this
-
-  -- 展开 FStep：走到 k2 分支；q=0 时无论公式/prev2 都不会插入，直接等于 Fs
-  simp [VC.FStep, hk0ne, hk1ne]
-    -- 现在目标是一个 match 两支都相同的表达式，直接 cases 掉匹配项即可
-  have hmatch :
-      (match E0.W (VC.decN (VC.runState E0 s).t) with
-        | A ⋎ B => (VC.runState E0 s).Fs
-        | x     => (VC.runState E0 s).Fs)
-        = (VC.runState E0 s).Fs := by
-    cases hForm : E0.W (VC.decN (VC.runState E0 s).t) <;> simp [hForm]
-
-  -- 右边是 runState (toConcreteEnum E) s，用 E0 := toConcreteEnum E 抹平
-  simpa [E0] using hmatch
-
-/-- **关键引理**：在第 n 步是 k0，且第 n 个 digit=1，则 Fs 在 n+1 步变成插入当前调度公式。 -/
+/-- Key lemma: if step `n` is a `k0` step and the `n`-th digit is `1`, then at step `n+1` the set `Fs` is updated by inserting the currently scheduled formula. -/
 lemma runStateAux_Fs_succ_k0_digit1
     (E0 : VC.Enumerations) (s : fin_seq) (n : ℕ)
     (hn : n.succ ≤ s.len)
@@ -1718,53 +1776,44 @@ lemma runStateAux_Fs_succ_k0_digit1
   have hk0st0 : VC.decK st0.t = k0 := by
     simpa [ht0] using hk0
 
-  -- 把 runStateAux 的 succ 分支展开成 step，再展开 step.Fs = FStep
-  -- 然后用 hk0st0 选中 k0 分支，用 hq 选中 q=1 分支，用 ht0 把 decN st0.t 改成 decN n
-  -- （这一步就是你卡住的那个巨大 if 的“正确消解方式”）
-  dsimp [VC.runStateAux]   -- 把 (n+1) 这一层展开出来：let st := ...; let q := ...; step ...
-  -- 这时左边变成 (VC.step E0 st0 (s.seq ⟨n,...⟩)).Fs
-  -- step 的 Fs 就是 FStep
-  simp [VC.step, VC.FStep, st0, hk0st0, hq, ht0]
+  -- Unfold the successor branch of `runStateAux` into `step`, and then unfold `step.Fs = FStep`.
+  -- Then use `hk0st0` to select the `k0` branch, `hq` to select `q = 1`, and `ht0` to rewrite `decN st0.t` as `decN n`.
+  -- This is the correct way to resolve the large nested `if` expression that otherwise gets stuck.
+  dsimp [VC.runStateAux]   -- Expand the `(n+1)` layer: `let st := ...; let q := ...; step ...`.
+  -- The left-hand side is now `(VC.step E0 st0 (s.seq ⟨n, ...⟩)).Fs`.
+  -- The `Fs` field of `step` is by definition `FStep`.
+  simp [VC.step, VC.FStep, st0, hq, ht0]
   intro hnk0
   exact False.elim (hnk0 hk0)
 
-/-- 若 `decK t = k2`，则 `decN (t-2) = decN t`（同一 (n,m) 的三拍对齐）。 -/
-lemma decN_sub2_of_decK_eq_k2 (t : ℕ) (hk2 : VC.decK t = IPC.k2) :
+/-- If `decK t = k2`, then `decN (t-2) = decN t`; this is the three-phase alignment for a fixed pair `(n,m)`. -/
+lemma decN_sub2_of_decK_eq_k2 (t : Nat) (hk2 : VC.decK t = IPC.k2) :
     VC.decN (t - 2) = VC.decN t := by
 
-  -- 从 hk2 得到 t % 3 = 2
   have hmod2 : t % 3 = 2 := by
-    have : (VC.decK t).val = 2 := by
+    have hval : (VC.decK t).val = 2 := by
       simpa [IPC.k2] using congrArg Fin.val hk2
-    simpa [VC.decK, IPC.schedDecode] using this
+    simpa [VC.decK, IPC.schedDecode] using hval
 
-  -- 令 q := t/3。由 mod_add_div 得到 t = t%3 + 3*q = 2 + 3*q
   have ht_eq : t = 2 + 3 * (t / 3) := by
-    -- Nat.mod_add_div : t%3 + 3*(t/3) = t
     have h := Nat.mod_add_div t 3
-    -- 受控改写，不用 simp [ht_eq] 以免爆栈
-    -- h.symm : t = t%3 + 3*(t/3)
     simpa [hmod2, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using h.symm
 
-  -- t-2 = 3*(t/3)
   have hsub : t - 2 = 3 * (t / 3) := by
-    -- 用 congrArg 把等式塞进 (-2)
-    have := congrArg (fun x => x - 2) ht_eq
-    -- (2 + X) - 2 = X
-    simpa [Nat.add_sub_cancel_left] using this
+    conv_lhs => rw [ht_eq]
+    exact Nat.add_sub_cancel_left 2 (3 * (t / 3))
 
-  -- (t-2)/3 = t/3
   have hdiv : (t - 2) / 3 = t / 3 := by
     rw [hsub]
-    -- (3 * q) / 3 = q
-    -- 先换成 q*3 再用 mul_div_right
-    have : (3 * (t / 3)) / 3 = ((t / 3) * 3) / 3 := by
+    have hmul : (3 * (t / 3)) / 3 = ((t / 3) * 3) / 3 := by
       simp [Nat.mul_comm]
-    rw [this]
-    simpa using Nat.mul_div_right (t / 3) 3
+    rw [hmul]
+    simp
 
-  -- decN 只取 schedDecode 的第一分量 = unpair(q).1，所以只要 q 相等即可
-  simp [VC.decN, IPC.schedDecode, hdiv]
+  unfold VC.decN IPC.schedDecode
+  change (IPC.pairDecodeBin ((t - 2) / 3)).1 = (IPC.pairDecodeBin (t / 3)).1
+  rw [hdiv]
+
 
 /-!
 Main rule package for `Tlaw`.
@@ -1791,7 +1840,7 @@ theorem stepRules
   have ht : st.t = s.len := by
     simpa [st, E0] using (runState_t (E0 := E0) (s := s))
 
-  have hk : VC.decK st.t = VC.decK s.len := by simpa [ht]
+  have hk : VC.decK st.t = VC.decK s.len := by simp[ht]
   -- Split on decK
   by_cases hk0 : VC.decK s.len = IPC.k0
   · -- k0 case
@@ -1827,22 +1876,22 @@ theorem stepRules
         let X : Form := E.W (VC.decN s.len)
 
         have hX : E0.W (VC.decN st.t) = X := by
-  -- 先用 ht : st.t = s.len
-  -- 再展开 E0
+  -- First use `ht : st.t = s.len`.
+  -- Then unfold `E0`.
           subst X
-          simpa [E0, toConcreteEnum, ht]
+          simp [E0, toConcreteEnum, ht]
 
         have hprfX : (↑st.Fs : Set Form) ⊢ᵢ X := by
-  -- 用 hX 改写结论
+  -- Rewrite the conclusion using `hX`.
           simpa [hX] using hprf
 
--- 第二步：再把上下文从 st.Fs 改成 V.F s
+-- Step 2: rewrite the context from `st.Fs` to `V.F s`.
         have hΓ : (↑(V.F s) : Set Form) ⊢ᵢ X := by
-  -- 用 hFs 改写上下文（注意方向）
+  -- Rewrite the context using `hFs` (note the direction).
           simpa [hFs] using hprfX
 
--- 如果你的 goal 是 ↑((Vconcrete E).F s) ⊢ᵢ X，而你这里 let V := Vconcrete E
--- 最后一行只需要把 V 展开一下：
+-- If your goal is `↑((Vconcrete E).F s) ⊢ᵢ X` while you have `let V := Vconcrete E`,
+-- then in the last line you only need to unfold `V`:
         simpa [V] using hΓ
 
 
@@ -1851,11 +1900,11 @@ theorem stepRules
       have hF' : VC.Forced0b E0 st = false := by
         cases h0 : VC.Forced0b E0 st with
         | true =>
-            -- h0 : Forced0b = true，与 hF : Forced0b ≠ true 矛盾
+            -- Here `h0 : Forced0b = true`, contradicting `hF : Forced0b ≠ true`.
             exact False.elim (hF h0)
         | false =>
 
-            simpa using h0
+            simp
       -- if needs1 at this time, we must take q=1 (CaseCtx), else take q=0 (CaseOne)
       by_cases hneed :
   (E.W (VC.decN s.len) ∈ V.F (finitize a.1 (s.len + 1)) ∨
@@ -1878,37 +1927,14 @@ theorem stepRules
             StepsOK_child_of_StepsOK (V := V) (a := a) (W := W) (s := s) (q := 1) hOKs (by intro _; rfl)
           exact (Tlaw_eq_zero_iff (V := V) (a := a) (W := W) (s := child s 1)).2 ⟨hSigmaChild, hOKchild⟩
         · -- F(child)=insert X (F s)
-          change (VC.runState E0 (child s 1)).Fs =
-            insert X (VC.runState E0 s).Fs
-
-
-          have hk0st : VC.decK (VC.runState E0 s).t = IPC.k0 := by
-          -- runState_t : (runState E0 s).t = s.len
-            simpa [runState_t (E0 := E0) (s := s)] using hk0
-
-
-          have hr : VC.runState E0 (child s 1) = VC.step E0 (VC.runState E0 s) 1 :=
-          runState_child (E0 := E0) (s := s) (q := 1)
-
-
-          have hW : (toConcreteEnum E).W (VC.decN s.len) = E.W (VC.decN s.len) := by rfl
-
-          simp [VC.FStep, hk0, X, hW]
-          have ht' : (VC.runState E0 s).t = s.len := by
-            simpa [st] using ht
-          rw [hr]
-          simp [VC.step, VC.FStep, hk0st, ht', hW]
-          have hW0 : E0.W (VC.decN s.len) = E.W (VC.decN s.len) := by
-
-            simpa [E0] using hW
-
-          simp [hk0, hW0]
+          subst X
+          simpa [VC.FS, E0] using (FS_child_k0_one (E := E) (s := s) hk0)
         · -- X in Gamma a or X=W
           rcases hneed with hmem | hEq
           · -- X ∈ Γ_a because it's already in F(prefix a (s.len))
             left
             refine ⟨s.len + 1, ?_⟩
--- 注意：Gamma 用的是 finitize a.1 n，所以这里也用 a.1，不用 ↑a
+-- Note that `Gamma` is defined using `finitize a.1 n`, so we also work with `a.1` here rather than `↑a`.
             simpa [Gamma, X] using hmem
           · right
             simpa [X] using hEq
@@ -2021,7 +2047,7 @@ theorem stepRules
                     (by simpa [VC.runState, st] using hAllowed)
                 simpa [V, Vconcrete, E0] using this
               have hnew : needs1b (E := E) V a W s.len = true → (2 : ℕ) = 1 := by
-  -- hk0 : ¬ decK s.len = k0  从你的 “not k0” 分支里来的
+  -- Here `hk0 : ¬ decK s.len = k0` comes from the outer “not k0” branch split.
                 have hk0ne : VC.decK s.len ≠ IPC.k0 := by simpa using hk0
                 simpa using
     (eq_one_of_needs1b_true_of_decK_ne_k0 (V := V) (a := a) (W := W) (t := s.len) (q := 2) hk0ne)
@@ -2277,6 +2303,7 @@ theorem stepRules
 end StepRules
 
 /-! ### Final: `impDataConcrete` (Todo B) -/
+/-- Package the concrete subfan construction as the `ImpHardData` required for the implication case of the truth lemma (paper §4.1, propositional fragment). -/
 def impDataConcrete (E : Enumerations) :
     ∀ (a : Branch (Vconcrete E)) (W Q : Form), ImpHardData (Vconcrete E) a W Q := by
   intro a W Q
@@ -2305,8 +2332,7 @@ def impDataConcrete (E : Enumerations) :
     toBranch := toB
     toBranch_coe := by
       intro b
-      simpa [toB] using
-        (toBranchOfSubfan_coe (V := V) (hT := hT) (hsub := hsub) b)
+      simp [toB]
     subfan_ok := by
       intro b
       have h :=

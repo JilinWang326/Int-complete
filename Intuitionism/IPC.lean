@@ -1,11 +1,28 @@
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Finset.Basic
 
+/-!
+# Propositional IPC and modified Kripke semantics
+
+This file formalizes the propositional fragment of the machinery used in Veldman
+1976:
+
+- paper §1.1: syntax of formulas;
+- paper §1.2: modified Kripke models with exploding worlds;
+- paper §1.3: forcing/validity clauses;
+- paper §1.4: soundness;
+- paper §2.2: semiregular sets (here specialized to the propositional fragment,
+  so the existential clause disappears).
+
+Whenever the Lean development intentionally specializes the predicate paper to the
+propositional case, the comments say so explicitly.
+-/
+
 namespace IPC
 
 universe u
 
-/-- Propositional formulas with a distinguished constant `I`. -/
+/-- Syntax for the propositional fragment of paper §1.1, with Veldman's distinguished constant `I`. -/
 inductive Form : Type
 | atom : Nat → Form
 | I : Form
@@ -26,7 +43,7 @@ scoped[IPC] infixr:65 " ⋎ " => Form.or
 
 open scoped IPC
 
-/-- Exploded (modified) Kripke models (Lean3-style: W ⊆ A, R on A). -/
+/-- Modified Kripke models in the sense of paper §1.2, specialized to the propositional fragment. -/
 structure emodel (A : Type u) where
   W     : Set A
   R     : A → A → Prop
@@ -37,7 +54,7 @@ structure emodel (A : Type u) where
   mono  : ∀ p : Nat, ∀ w1 w2 : A, w1 ∈ W → w2 ∈ W → val p w1 → R w1 w2 → val p w2
   monoI : ∀ w1 w2 : A, w1 ∈ W → w2 ∈ W → ival w1 → R w1 w2 → ival w2
 
-/-- Forcing for exploded models (Veldman-style "exploding points"). -/
+/-- Forcing relation from paper §1.3. The atomic clause includes `∨ I`, exactly as in Veldman's modified semantics with exploding worlds. -/
 @[simp]
 def Forces {A : Type u} (M : emodel A) : Form → A → Prop
 | Form.atom p, v => M.val p v ∨ M.ival v
@@ -62,7 +79,7 @@ def sem_csq (Γ : Set Form) (p : Form) : Prop :=
 
 notation Γ " ⊨ᵢ " p => sem_csq Γ p
 
-/-- Hilbert-style IPC proof system (same as your Lean3, with `I` as bottom). -/
+/-- Hilbert-style proof system for the propositional fragment of IPC. This instantiates Veldman's remark in §1.1 that the particular axiomatization is not essential. -/
 inductive prf : Set Form → Form → Prop
 | ax   {Γ} {p} (h : p ∈ Γ) : prf Γ p
 | k    {Γ} {p q} : prf Γ (p ⊃ (q ⊃ p))
@@ -189,8 +206,7 @@ lemma mono_r {A : Type u} {M : emodel A} :
       intro w1 w2 hw1 hw2 h hR
       exact M.monoI w1 w2 hw1 hw2 h hR
   | imp p q ihp ihq =>
-      intro w1 w2 hw1 hw2 h h12
-      intro w3 hw3 hw2' h23 hpw3
+      intro w1 w2 hw1 hw2 h h12 w3 hw3 hw2' h23 hpw3
       have h13 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 h12 h23
       exact h w3 hw3 hw1 h13 hpw3
   | and p q ihp ihq =>
@@ -220,25 +236,21 @@ lemma forces_of_explodes {A : Type u} (M : emodel A) :
       intro w hw hi
       exact Or.inl (ihp w hw hi)
   | imp p q ihp ihq =>
-      intro w hw hi
-      intro w' hw' hw'0 hww' hpw'
+      intro w hw hi w' hw' hw'0 hww' hpw'
       have hi' : M.ival w' := M.monoI w w' hw hw' hi hww'
       exact ihq w' hw' hi'
 
-/-- Soundness: if Γ ⊢ᵢ p then Γ ⊨ᵢ p.  (This is Veldman 1.4 in the propositional setting.) -/
+/-- Soundness for the modified semantics: if `Γ ⊢ᵢ p`, then `Γ ⊨ᵢ p`. This is the propositional analogue of Veldman Theorem 1.4. -/
 theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := by
   intro A M w hw hΓ
   induction h with
   | ax hmem =>
       exact hΓ _ hmem
   | k =>
-      intro w1 hw1 _ hww1 hpw1
-      intro w2 hw2 _ hw1w2 hqw2
+      intro w1 hw1 _ hww1 hpw1 w2 hw2 _ hw1w2 hqw2
       exact mono_r (M:=M) _ w1 w2 hw1 hw2 hpw1 hw1w2
   | s =>
-      intro w1 hw1 _ hww1 hPQR
-      intro w2 hw2 _ hw1w2 hPQ
-      intro w3 hw3 _ hw2w3 hP
+      intro w1 hw1 _ hww1 hPQR w2 hw2 _ hw1w2 hPQ w3 hw3 _ hw2w3 hP
       have hw1w3 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 hw1w2 hw2w3
       have hQR : w3 ⊩{M} (_ ⊃ _) := hPQR w3 hw3 hw1 hw1w3 hP
       have hQ  := hPQ  w3 hw3 hw2 hw2w3 hP
@@ -256,8 +268,8 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       intro w1 hw1 _ hww1 hpq
       exact hpq.2
   | pair =>
-      intro w1 hw1 _ hww1 hP
-      intro w2 hw2 _ hw1w2 hQ
+      intro w1 hw1 _ hww1 hP w2 hw2 _ hw1w2 hQ
+
       have hP' := mono_r (M:=M) _ w1 w2 hw1 hw2 hP hw1w2
       exact And.intro hP' hQ
   | inr =>
@@ -267,9 +279,7 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       intro w1 hw1 _ hww1 hQ
       exact Or.inr hQ
   | case =>
-      intro w1 hw1 _ hww1 hPR
-      intro w2 hw2 _ hw1w2 hQR
-      intro w3 hw3 _ hw2w3 hPorQ
+      intro w1 hw1 _ hww1 hPR w2 hw2 _ hw1w2 hQR w3 hw3 _ hw2w3 hPorQ
       have hw1w3 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 hw1w2 hw2w3
       cases hPorQ with
       | inl hP => exact hPR w3 hw3 hw1 hw1w3 hP
@@ -288,15 +298,15 @@ theorem veldman_1_4 {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) :
   intro A M hΓ w hw
   exact (prf_sound (Γ:=Γ) (p:=p) h) M w hw (hΓ w hw)
 
-/-- Deductive closure: Γ contains every formula provable from Γ. -/
+/-- Deductive closure, corresponding to clause (i) in paper §2.2 after propositional specialization. -/
 def IsTheory (Γ : Set Form) : Prop :=
   ∀ {p : Form}, (Γ ⊢ᵢ p) → p ∈ Γ
 
-/-- Disjunctive: if (p ⊔ q) is in Γ, then Γ already contains p or q. -/
+/-- Disjunctivity, corresponding to clause (ii) in paper §2.2. -/
 def Disjunctive (Γ : Set Form) : Prop :=
   ∀ {p q : Form}, (Form.or p q) ∈ Γ → p ∈ Γ ∨ q ∈ Γ
 
-/-- Semiregular (propositional): disjunctive theory. -/
+/-- Semiregularity in the propositional fragment: paper §2.2 with the existential clause omitted because the language here has no quantifiers. -/
 def SemiRegular (Γ : Set Form) : Prop :=
   IsTheory Γ ∧ Disjunctive Γ
 

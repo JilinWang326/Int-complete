@@ -27,8 +27,11 @@ lemma runState_extend_singleton (E : Enumerations) (s : fin_seq) (q : ℕ) :
   have hLen : child.len = s.len.succ := by
     simp [child, fin_seq.extend, fin_seq.singleton]
   have hSucc : s.len.succ ≤ child.len := by
-    simpa [hLen]
+    rw [hLen]
   have hPred : s.len ≤ child.len := Nat.le_of_succ_le hSucc
+  have hDigitLt : s.len < child.len := by
+    rw [hLen]
+    exact Nat.lt_succ_self s.len
 
   -- prefix relation
   have hPref : Prefix s child := Prefix_child s q
@@ -54,14 +57,8 @@ lemma runState_extend_singleton (E : Enumerations) (s : fin_seq) (q : ℕ) :
   -- the last digit of `child` is `q`, and this is exactly the index used by runStateAux
   have hDigit :
       child.seq
-        ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc⟩ = q := by
-    -- align the Fin index with the one in `extend_singleton_last`
-    have hFin :
-        (⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc⟩ : Fin child.len)
-          = ⟨s.len, by
-              simpa [child, fin_seq.extend, fin_seq.singleton]⟩ := by
-      apply Fin.ext; rfl
-    simpa [child, hFin] using (extend_singleton_last s q)
+        ⟨s.len, hDigitLt⟩ = q := by
+    simpa [child] using (extend_singleton_last s q)
 
   -- now compute runState on the child
   -- unfold runState; rewrite child.len; unfold runStateAux at the final step
@@ -69,7 +66,7 @@ lemma runState_extend_singleton (E : Enumerations) (s : fin_seq) (q : ℕ) :
   -- rewrite the length so that the last step is a `succ`
   -- (this avoids fragile simp with dependent arguments)
   have : runStateAux E child child.len le_rfl = runStateAux E child s.len.succ (by
-      simpa [hLen]) := by
+      simp [hLen]) := by
     cases hLen
     rfl
   -- use that rewrite
@@ -82,15 +79,17 @@ lemma runState_extend_singleton (E : Enumerations) (s : fin_seq) (q : ℕ) :
 lemma Fs_extend_singleton (E : Enumerations) (s : fin_seq) (q : ℕ) :
     (runState E (extend s (singleton q))).Fs = FStep E (runState E s) q := by
   -- take Fs-field of the state computation lemma
-  simpa [runState_extend_singleton (E := E) (s := s) (q := q), step] using
-    congrArg State.Fs (runState_extend_singleton (E := E) (s := s) (q := q))
+  simp [runState_extend_singleton (E := E) (s := s) (q := q), step]
 
 /-- Coercion compatibility: `(↑(insert X Γ) : Set _) = (↑Γ : Set _) ⸴ X`. -/
 lemma coe_insert_finset (Γ : Finset Form) (X : Form) :
     (↑(insert X Γ) : Set Form) = ((↑Γ : Set Form) ⸴ X) := by
   ext p
-  simp
-  exact Iff.symm (Eq.to_iff rfl)
+  constructor
+  · intro hp
+    exact Finset.mem_insert.mp hp
+  · intro hp
+    exact Finset.mem_insert.mpr hp
 
 /-- If `decK t ≠ k0` and `decK t ≠ k1`, then `decK t = k2`. -/
 lemma decK_eq_k2_of_ne (t : ℕ) (h0 : decK t ≠ k0) (h1 : decK t ≠ k1) :
@@ -103,7 +102,7 @@ lemma decK_eq_k2_of_ne (t : ℕ) (h0 : decK t ≠ k0) (h1 : decK t ≠ k1) :
       apply h0
       apply Fin.ext
       -- show vals equal
-      simpa [k0, hv]
+      simp [k0, hv]
   | succ v1 =>
       cases hv1 : v1 with
       | zero =>
@@ -111,13 +110,13 @@ lemma decK_eq_k2_of_ne (t : ℕ) (h0 : decK t ≠ k0) (h1 : decK t ≠ k1) :
           exfalso
           apply h1
           apply Fin.ext
-          simpa [k1, hv, hv1]
+          simp [k1, hv, hv1]
       | succ v2 =>
           cases hv2 : v2 with
           | zero =>
               -- val = 2, so it's k2
               apply Fin.ext
-              simpa [k2, hv, hv1, hv2]
+              simp [k2, hv, hv1, hv2]
           | succ v3 =>
               -- val ≥ 3 contradicts (decK t).isLt : val < 3
               have hlt : (decK t).val < 3 := (decK t).isLt
@@ -184,8 +183,8 @@ lemma two_le_len_of_prev2_eq_one (E : Enumerations) (s : fin_seq) :
       have : (runState E s).prev2 = 0 := by
         -- runStateAux 0 = initState
         simp [runState, hlen, runStateAux, initState]
-      -- contradiction
-      simp [this] at hp
+      have h01 : (0 : ℕ) ≠ 1 := by decide
+      exact False.elim (h01 (by simp [this] at hp))
   | succ n =>
       cases n with
       | zero =>
@@ -194,11 +193,12 @@ lemma two_le_len_of_prev2_eq_one (E : Enumerations) (s : fin_seq) :
             -- unfold runState with len=1
             -- runStateAux 1 = step initState q0, and step sets prev2 := init.prev1 = 0
             simp [runState, hlen, runStateAux, step, initState]
-          simp [this] at hp
+          have h01 : (0 : ℕ) ≠ 1 := by decide
+          exact False.elim (h01 (by simp [this] at hp))
       | succ n =>
           -- length ≥ 2
           -- s.len = n.succ.succ
-          simpa [hlen] using (Nat.succ_le_succ (Nat.succ_le_succ (Nat.zero_le n)))
+          simp
 
 /-! ## Σ: admitted child lemma -/
 
@@ -217,9 +217,14 @@ lemma Sigma_child_eq_zero_of_allowed
 
   let child : fin_seq := extend s (singleton q)
 
-  have hSucc : s.len.succ ≤ child.len := by
+  have hChildLen : child.len = s.len + 1 := by
     simp [child, fin_seq.extend, fin_seq.singleton]
+  have hSucc : s.len.succ ≤ child.len := by
+    rw [hChildLen, Nat.succ_eq_add_one]
   have hPred : s.len ≤ child.len := Nat.le_of_succ_le hSucc
+  have hDigitLt : s.len < child.len := by
+    rw [hChildLen]
+    exact Nat.lt_add_of_pos_right (Nat.succ_pos 0)
 
   have hPref : Prefix s child := Prefix_child s q
 
@@ -240,8 +245,7 @@ lemma Sigma_child_eq_zero_of_allowed
 
   -- compute the last digit and the prefix state
   have hLast :
-      child.seq ⟨s.len, by
-        simp [child, fin_seq.extend, fin_seq.singleton]⟩ = q := by
+      child.seq ⟨s.len, hDigitLt⟩ = q := by
     simpa [child] using extend_singleton_last s q
 
   have hStateEq :
@@ -257,8 +261,7 @@ lemma Sigma_child_eq_zero_of_allowed
 
   have hAllowedChild :
       AllowedStepb E (runStateAux E child s.len (Nat.le_of_succ_le hSucc))
-        (child.seq ⟨s.len, by
-          simp [child, fin_seq.extend, fin_seq.singleton]⟩)
+        (child.seq ⟨s.len, hDigitLt⟩)
         = true := by
     -- rewrite the state and digit to the given hypothesis `hq`
     -- runState E s is runStateAux ... s.len
@@ -266,7 +269,7 @@ lemma Sigma_child_eq_zero_of_allowed
 
   -- admittedAuxb at succ length: prefix AND allowed
   have hAuxChild : admittedAuxb E child s.len.succ hSucc = true := by
-    simp [admittedAuxb, hSucc, hChildPrefix, hAllowedChild]
+    simp [admittedAuxb, hChildPrefix, hAllowedChild]
 
   have hAdChild : Admittedb E child = true := by
     -- Admittedb is admittedAuxb at full length; child.len = s.len+1
@@ -284,97 +287,7 @@ lemma FS_child_eq
     (E : Enumerations)
     (s : fin_seq) (q : ℕ) :
     FS E (extend s (singleton q)) = FStep E (runState E s) q := by
-
-  -- We prove the stronger statement about runState itself, then project `.Fs`.
-  let child : fin_seq := extend s (singleton q)
-
-  have hlen : child.len = s.len.succ := by
-    simp [child, fin_seq.extend, fin_seq.singleton]
-  have hSucc : s.len.succ ≤ child.len := by
-    simpa [hlen]
-
-  -- `runState E child` is `runStateAux ... child.len`; rewrite the length to `s.len+1`.
-  have hpi_len :
-      runStateAux E child child.len le_rfl = runStateAux E child s.len.succ hSucc := by
-    -- proof irrelevance + hlen
-    have h' : s.len.succ ≤ child.len := hSucc
-    -- change `child.len` to `s.len.succ`
-    -- and align proofs
-    have := runStateAux_proof_irrel (E := E) (s := child) (n := child.len) le_rfl (by
-      simpa [hlen] using h')
-    simpa [hlen] using this
-
-  -- unfold runStateAux at the last step (succ)
-  have hUnfold :
-      runStateAux E child s.len.succ hSucc
-        =
-      let st := runStateAux E child s.len (Nat.le_of_succ_le hSucc)
-      let qq := child.seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc⟩
-      step E st qq := by
-    simp [runStateAux]
-
-  -- rewrite the prefix state using Prefix
-  have hPref : Prefix s child := Prefix_child s q
-  have hPred : s.len ≤ child.len := Nat.le_of_succ_le hSucc
-
-  have hStateEq :
-      runStateAux E child s.len (Nat.le_of_succ_le hSucc) = runStateAux E s s.len le_rfl := by
-    have hEq := runStateAux_eq_of_Prefix (E := E) (h := hPref) s.len le_rfl
-    have hpi :
-        runStateAux E child s.len (Nat.le_trans le_rfl hPred)
-          = runStateAux E child s.len (Nat.le_of_succ_le hSucc) :=
-      runStateAux_proof_irrel (E := E) (s := child) s.len (Nat.le_trans le_rfl hPred)
-        (Nat.le_of_succ_le hSucc)
-    simpa [hpi] using hEq
-
-  have hDigit :
-      child.seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc⟩ = q := by
-    -- the proof in the index is irrelevant
-    -- use the dedicated lemma about the last digit
-    have :
-        child.seq ⟨s.len, by
-          simp [child, fin_seq.extend, fin_seq.singleton]⟩ = q := by
-      simpa [child] using extend_singleton_last s q
-    -- now coerce the Fin index equality
-    simpa [child, fin_seq.extend, fin_seq.singleton] using this
-
-  -- Put it together: runState child = step (runState s) q
-  have hRun : runState E child = step E (runState E s) q := by
-    -- start from runStateAux form
-    -- runState E child = runStateAux E child child.len le_rfl
-    --                 = runStateAux E child (s.len+1) ...
-    --                 = step E (runStateAux E child s.len ...) q
-    --                 = step E (runStateAux E s s.len) q
-    --                 = step E (runState E s) q
-
-    -- rewrite runStateEchild
-    have : runState E child = runStateAux E child child.len le_rfl := by rfl
-    -- rewrite via hpi_len, unfold, rewrite state & digit
-    --
-    -- We keep this as a calc chain for readability.
-    calc
-      runState E child
-          = runStateAux E child child.len le_rfl := by rfl
-      _   = runStateAux E child s.len.succ hSucc := by simpa using hpi_len
-      _   = (let st := runStateAux E child s.len (Nat.le_of_succ_le hSucc)
-             let qq := child.seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hSucc⟩
-             step E st qq) := by
-             simpa using hUnfold
-      _   = step E (runStateAux E s s.len le_rfl) q := by
-             simp [hStateEq, hDigit]
-      _   = step E (runState E s) q := by
-             simp [runState]
-
-  -- Now compute FS by projecting `.Fs` and unfolding `step`.
-  -- `step` sets `Fs := FStep E st q`.
-  --
-  -- So:
-  --   FS(child) = (runState child).Fs = (step ...).Fs = FStep (runState s) q.
-    -- `hRun` uses the local abbrev `child`, but the goal has `extend s [q]`.
-  have hRun' : runState E (extend s (singleton q)) = step E (runState E s) q := by
-    simpa [child] using hRun
-  simp [FS, hRun', step]
-
+  simpa [FS] using Fs_extend_singleton (E := E) (s := s) (q := q)
 
 /-! ## Forced witness extraction -/
 
@@ -393,7 +306,7 @@ lemma Forced0_witness_of_Forced0b
   -- unfold Forced0b and use `anyUpTo_eq_true`
   unfold Forced0b at hF
   simp [hk0] at hF
-  -- 现在 hF 的形状是：
+  -- At this point `hF` has the following shape:
   -- hF : anyUpTo st.t (fun i => decide ((E.d i).2 = ...) && decide ((E.d i).1 ⊆ ...)) = true
 
   have hAny :=
@@ -407,13 +320,13 @@ lemma Forced0_witness_of_Forced0b
   have hdec' :
       decide ((E.d i).2 = E.W (decN st.t)) = true ∧
       decide ((E.d i).1 ⊆ st.Fs) = true := by
-    -- 下面两种写法二选一；看你环境里哪个 lemma 名字可用
+    -- Either of the following two styles works; use the one whose lemma name is available in your environment.
     · exact Bool.and_eq_true_iff.mp hdec
     -- · exact (by
-    --     -- 如果没有 Bool.and_eq_true，也可以：
+    --     -- If `Bool.and_eq_true` is not available, you can also proceed as follows:
     --     have : (decide ((E.d i).2 = E.W (decN st.t)) &&
     --              decide ((E.d i).1 ⊆ st.Fs)) = true := hdec
-    --     -- simp 通常能把 && = true 变成 ∧
+    --     -- Usually `simp` turns `&& = true` into a conjunction.
     --     simpa using this)
 
   have h1 : (E.d i).2 = E.W (decN st.t) :=
@@ -449,13 +362,9 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
   have ht : st.t = s.len := by
     simpa [st] using (runState_t_eq_len (E := E) s)
 
-  -- `prev2 = 1` forces length ≥ 2.
-  have hlen2 : 2 ≤ s.len :=
-    two_le_len_of_prev2_eq_one (E := E) (s := s) (by simpa [st] using hp2)
-
-  -- Work with `t := len` and `u := t-2`.
+  -- Work with `t := len` and `u := 3*(t/3)` (the k0-slot before a k2-time).
   let t : ℕ := s.len
-  let u : ℕ := t - 2
+  let u : ℕ := 3 * (t / 3)
 
   -- Turn hk2 into a statement about `decK t`.
   have hk2_t : decK t = k2 := by
@@ -466,39 +375,32 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
     have h := congrArg Fin.val hk2_t
     simpa [decK, schedDecode, k2] using h
 
-  -- Decompose `t` as `3*(t/3)+2`, hence `u = 3*(t/3)`.
+  -- Decompose `t` as `3*(t/3)+2`.
   have htdecomp : t = 3 * (t / 3) + 2 := by
     calc
       t = (t / 3) * 3 + t % 3 := by
         simpa [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using (Nat.div_add_mod t 3).symm
       _ = (t / 3) * 3 + 2 := by simp [htmod]
       _ = 3 * (t / 3) + 2 := by
-        simp [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc, Nat.add_assoc, Nat.add_left_comm,
+        simp [Nat.mul_comm,
           Nat.add_comm]
 
-  have hu_eq : u = 3 * (t / 3) := by
-    -- Apply `(_ - 2)` to the decomposition, then cancel.
-    have ht_sub : t - 2 = (3 * (t / 3) + 2) - 2 := by
-      simpa using (congrArg (fun x => x - 2) htdecomp)
-    have : t - 2 = 3 * (t / 3) := by
-      calc
-        t - 2 = (3 * (t / 3) + 2) - 2 := ht_sub
-        _ = 3 * (t / 3) := by simp
-    simpa [u] using this
   -- Therefore `decK u = k0` and `decN u = decN t`.
   have hdecK_u : decK u = k0 := by
     apply Fin.eq_of_val_eq
-    simp [decK, schedDecode, hu_eq, k0]
+    simp [decK, schedDecode, schedDecodeBin, u, k0]
 
   have hdiv : u / 3 = t / 3 := by
-    simp [hu_eq]
+    simp [u]
 
   have hdecN_u : decN u = decN t := by
-    simp [decN, schedDecode, hdiv]
+    simp [decN, schedDecode, schedDecodeBin, hdiv]
 
   -- `u+2 = t`, and hence `(u+2) ≤ len`.
   have hu2_eq : u + 2 = t := by
-    simpa [u] using (Nat.sub_add_cancel (by simpa [t] using hlen2))
+    calc
+      u + 2 = 3 * (t / 3) + 2 := by simp [u]
+      _ = t := htdecomp.symm
 
   have hu2_eq' : u.succ.succ = t := by
     -- `u.succ.succ = u+2`
@@ -508,7 +410,7 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
     simpa [t] using hu2_eq'
 
   have hu2_le : u.succ.succ ≤ s.len := by
-    -- 把左边改写成 s.len，然后就是 le_rfl
+    -- Rewrite the left-hand side to `s.len`; then the proof is simply `le_rfl`.
     rw [hu2_eq_len]
 
   -- Choose the exact prefix states needed to unfold twice.
@@ -520,56 +422,61 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
   let st2 : State := runStateAux E s u.succ.succ hu2_le
 
   -- `st2` is the same as the final state `st`.
-  -- 先把 u.succ.succ = s.len 记下来
+  -- First record the identity `u.succ.succ = s.len`.
   have hu2_eq_len : u.succ.succ = s.len := by
     simpa [t] using hu2_eq'
 
-  -- st2 就是 runStateAux 在 u+2；st 是 runStateAux 在 len
+  -- Here `st2` is `runStateAux` at `u+2`, while `st` is `runStateAux` at the full length.
   have hst2_to_len :
       st2 = runStateAux E s s.len (by
-        -- 把 hu2_le : u.succ.succ ≤ s.len 搬运成 s.len ≤ s.len
-        simpa [hu2_eq_len] using hu2_le) := by
-    -- 关键：这里 simp 的目标是“State 项”，不会简成 True
-      simp [st2, hu2_eq_len]
+        -- Transport `hu2_le : u.succ.succ ≤ s.len` into the canonical proof `s.len ≤ s.len`.
+        simp) := by
+    -- Key point: the goal here is an equality of `State` terms, so `simp` will not collapse it to `True`.
+      simp [st2]
       exact runStateAux.congr_simp E E rfl s s rfl (u + 1 + 1) s.len hu2_eq hu2_le
 
-  -- 2) 在同一个 n = s.len 下，用 proof_irrel 消掉证明参数差异（这里千万别再套 simpa）
+  -- 2) With the same `n = s.len`, use proof irrelevance to remove the difference between proof arguments (do not wrap this in another `simpa`).
   have hpi :
-      runStateAux E s s.len (by simpa [hu2_eq_len] using hu2_le)
+      runStateAux E s s.len (by simp)
         = runStateAux E s s.len le_rfl :=
     runStateAux_proof_irrel (E := E) (s := s) (n := s.len)
-      (by simpa [hu2_eq_len] using hu2_le) le_rfl
+      (by simp) le_rfl
 
-  -- 3) 展开 st，把它写成 runStateAux ... s.len le_rfl（仍然是 State 等式）
+  -- 3) Unfold `st` so that it becomes `runStateAux ... s.len le_rfl` (still an equality of `State` terms).
   have hst_def : st = runStateAux E s s.len le_rfl := by
     simp [st, runState]
 
-  -- 最后把三段串起来
+  -- Finally chain the three equalities together.
   have hst2 : st2 = st := by
     calc
       st2
-          = runStateAux E s s.len (by simpa [hu2_eq_len] using hu2_le) := hst2_to_len
+          = runStateAux E s s.len (by simp) := hst2_to_len
       _   = runStateAux E s s.len le_rfl := hpi
       _   = st := by
-            -- 这里 simp 只是在 State 里重写 st_def，不会把等式变 True
-            simpa [hst_def]
+            -- Here `simp` only rewrites `st_def` inside a `State` term; it does not turn the equality into `True`.
+            simp [hst_def]
 
   -- Unfold the two final steps explicitly.
+  have hu_lt_len : u < s.len := by
+    exact Nat.lt_of_succ_le hu1_le
+  have hu_succ_lt_len : u.succ < s.len := by
+    exact Nat.lt_of_succ_le hu2_le
+
   have hst1_step :
-      st1 = step E st0 (s.seq ⟨u, Nat.lt_of_lt_of_le (Nat.lt_succ_self u) hu1_le⟩) := by
+      st1 = step E st0 (s.seq ⟨u, hu_lt_len⟩) := by
     simp [st1, st0, runStateAux]
 
   have hst2_step :
-      st2 = step E st1 (s.seq ⟨u.succ, Nat.lt_of_lt_of_le (Nat.lt_succ_self u.succ) hu2_le⟩) := by
+      st2 = step E st1 (s.seq ⟨u.succ, hu_succ_lt_len⟩) := by
     simp [st2, st1, runStateAux]
 
   -- Hence `prev2` of the final state is the digit at position `u`.
   have hprev2 :
-      st2.prev2 = (s.seq ⟨u, Nat.lt_of_lt_of_le (Nat.lt_succ_self u) hu1_le⟩) := by
+      st2.prev2 = (s.seq ⟨u, hu_lt_len⟩) := by
     simp [hst2_step, hst1_step, step]
 
   -- From `hp2`, deduce that digit is `1`.
-  have hq : (s.seq ⟨u, Nat.lt_of_lt_of_le (Nat.lt_succ_self u) hu1_le⟩) = 1 := by
+  have hq : (s.seq ⟨u, hu_lt_len⟩) = 1 := by
     have : st2.prev2 = 1 := by
       simpa [hst2, st] using hp2
     simpa [hprev2] using this
@@ -600,17 +507,16 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
   have hmono : st1.Fs ⊆ st2.Fs := by
     simpa [hst2_step] using
       (step_Fs_mono (E := E) (st := st1)
-        (q := s.seq ⟨u.succ, Nat.lt_of_lt_of_le (Nat.lt_succ_self u.succ) hu2_le⟩))
+        (q := s.seq ⟨u.succ, hu_succ_lt_len⟩))
 
   have hW_mem_st2 : E.W (decN t) ∈ st2.Fs := hmono hW_mem_st1
 
   -- Translate back to the final state `st = runState E s` and rewrite `t = st.t`.
   simpa [hst2, st, ht, t] using hW_mem_st2
 
-
 /-! ## The main result: the concrete bar-induction step -/
 
-/-- **Todo C**: local induction step for the bar lemma, for the concrete Σ/F.
+/-! **Todo C**: local induction step for the bar lemma, for the concrete Σ/F.
 
 This is the propositional analogue of the closure step used in Veldman Lemma §3.43.
 
@@ -619,6 +525,8 @@ Structure of proof matches §3.32:
 - k1 (Case 2): only q=0, nothing changes
 - k2 (Case 3): split if `W_n` is a disjunction and `prev2=1`; otherwise only q=0
 -/
+
+/-- Local bar-induction step for the concrete fan. In the paper this corresponds to the rootward induction on admitted nodes used inside the completeness argument after the subfan construction of §4.1. -/
 theorem barIndStep_concrete
     (E : Enumerations)
     (A : Form) :
@@ -661,13 +569,17 @@ theorem barIndStep_concrete
         simpa [st, IPC.VeldmanConcrete.FStep, hk0] using hFsStep
       -- convert child proof to (Γ ⸴ X) ⊢ A
       have hΓX : (Set.insert X Γ) ⊢ᵢ A := by
-        have hset :
-    (↑(insert X (FS E s)) : Set Form) = (Γ ⸴ X) := by
-  -- Γ = ↑(FS E s)
-  -- 用 TodoC_Fix.lean 的 coe_insert_finset
-          simpa [Γ] using (IPC.VeldmanConcrete.coe_insert_finset (Γ := FS E s) (X := X))
-        -- rewrite hChildPrf along hFSchild and hset
-        simpa [hFSchild, hset, Γ] using hChildPrf
+        have hSub :
+            (↑(FS E (extend s (singleton q))) : Set Form) ⊆ (Set.insert X Γ) := by
+          intro p hp
+          have hp' : p ∈ FS E (extend s (singleton q)) := by simpa using hp
+          have hp'' : p ∈ insert X (FS E s) := by simpa [hFSchild] using hp'
+          rcases Finset.mem_insert.mp hp'' with hpX | hpΓ
+          · exact Or.inl hpX
+          · exact Or.inr (by simpa [Γ] using hpΓ)
+        exact IPC.prf.sub_weak
+          (Δ := (↑(FS E (extend s (singleton q))) : Set Form))
+          (Γ := Set.insert X Γ) (p := A) hChildPrf hSub
 
       -- derive Γ ⊢ X from the forced witness
       rcases Forced0_witness_of_Forced0b (E := E) (st := st) hk0 hF with ⟨i, hi, hconcl, hprem⟩
@@ -704,14 +616,14 @@ theorem barIndStep_concrete
 
       -- FS(child)=FS(s)
       have hFS : FS E (extend s (singleton q)) = FS E s := by
-  -- 先把子节点的 Fs 化为 FStep
+  -- First rewrite the child's `Fs` as the corresponding `FStep` value.
         have hstep :
       (runState E (extend s (singleton q))).Fs
         = FStep E (runState E s) q :=
     IPC.VeldmanConcrete.Fs_extend_singleton (E := E) (s := s) (q := q)
 
-  -- 在 k0 分支 + q ≠ 1 时，FStep 直接等于 st.Fs（即 FS E s）
-  -- 这里用你的 hk0 : decK st.t = k0，以及 hqne : q ≠ 1
+  -- In the `k0` branch with `q ≠ 1`, `FStep` is exactly `st.Fs` (hence `FS E s`).
+  -- Here we use `hk0 : decK st.t = k0` together with `hqne : q ≠ 1`.
         simpa [FS, st, IPC.VeldmanConcrete.FStep, hk0] using hstep
 
       simpa [Γ, hFS] using hChildPrf
@@ -723,7 +635,7 @@ theorem barIndStep_concrete
       have hk10 : (k1 : Fin 3) ≠ k0 := by decide
       have hAllowed : AllowedStepb E st q = true := by
         unfold AllowedStepb
-        simp [hk0, hk1, q, hk10]
+        simp [ hk1, q, hk10]
 
       have hChild : Sigma E (extend s (singleton q)) = 0 :=
         Sigma_child_eq_zero_of_allowed (E := E) (s := s) (q := q) hs0 (by
@@ -733,13 +645,13 @@ theorem barIndStep_concrete
         hall q hChild
 
       have hFS : FS E (extend s (singleton q)) = FS E s := by
-  -- 仍然先把 runState(child).Fs 化为 FStep
+  -- Again begin by rewriting `runState(child).Fs` as `FStep`.
         have hstep :
       (runState E (extend s (singleton q))).Fs
         = FStep E (runState E s) q :=
     IPC.VeldmanConcrete.Fs_extend_singleton (E := E) (s := s) (q := q)
 
-  -- 在 k1 分支，FStep 恒等于 st.Fs（不依赖 q）
+  -- In the `k1` branch, `FStep` is always `st.Fs`, independently of `q`.
         simpa [FS, st, IPC.VeldmanConcrete.FStep, hk0, hk1, q] using hstep
       simpa [Γ, hFS] using hChildPrf
 
@@ -783,15 +695,15 @@ theorem barIndStep_concrete
 
 -- FS(child2)=insert Q FS(s)
             have hFS2 : FS E (extend s (singleton q2)) = insert Q (FS E s) := by
-  -- 先把“子节点 runState 的 Fs”化成 FStep
+  -- First rewrite the child's `runState`-level `Fs` field into `FStep`.
               have hstep :
       (runState E (extend s (singleton q2))).Fs
         = FStep E (runState E s) q2 :=
               IPC.VeldmanConcrete.Fs_extend_singleton (E := E) (s := s) (q := q2)
 
-  -- 然后对 FStep 做纯计算化简（注意：这里根本不需要 hk2）
-  -- FStep 的代码结构是 if k=k0 / else if k=k1 / else match Wn with ...
-  -- 我们用 hk0,hk1 直接把它推进到 “Case 3” 的 match 分支
+  -- Then simplify `FStep` by direct computation (note that `hk2` is not actually needed here).
+  -- Recall that `FStep` is coded as `if k = k0 / else if k = k1 / else match Wn with ...`.
+  -- We use `hk0` and `hk1` to force the computation into the `Case 3` match branch.
               simpa [FS, st, IPC.VeldmanConcrete.FStep, hk0, hk1, hW, hp, q2] using hstep
 
             -- The disjunction itself is in FS(s) (k2 invariant)
@@ -811,24 +723,30 @@ theorem barIndStep_concrete
 
             -- convert child proofs into (Γ⸴P) ⊢ A and (Γ⸴Q) ⊢ A
             have hΓP : (Γ ⸴ P) ⊢ᵢ A := by
-  -- 第一步：只用 hFS1，把 child 的 FS 改写成 insert P (FS s)
-              have hPrf1' : (↑(insert P (FS E s)) : Set Form) ⊢ᵢ A := by
-    -- 这里用 rw 控制方向，避免 simp 自己乱选方向
-    -- 先把 hFS1 作用到 hPrf1 的上下文上
-                simpa [hFS1] using hPrf1
-              have hset : (↑(insert P (FS E s)) : Set Form) = Set.insert P Γ := by
-                ext p; simp [Γ]
-                exact Iff.symm (Eq.to_iff rfl)
-  -- 第二步：再用 hset 把 ↑(insert ...) 改写成 Γ ⸴ P
-  -- 注意方向：hset : ↑(insert P (FS E s)) = Γ ⸴ P
-  -- 我们要把 hPrf1' 的上下文 ↑(insert ...) 换成 Γ ⸴ P，所以用 rw [hset] 即可
-              simpa [hset] using hPrf1'
+              have hSubP :
+                  (↑(FS E (extend s (singleton q1))) : Set Form) ⊆ (Γ ⸴ P) := by
+                intro p hp
+                have hp' : p ∈ FS E (extend s (singleton q1)) := by simpa using hp
+                have hp'' : p ∈ insert P (FS E s) := by simpa [hFS1] using hp'
+                rcases Finset.mem_insert.mp hp'' with hpP | hpΓ
+                · exact Or.inl hpP
+                · exact Or.inr (by simpa [Γ] using hpΓ)
+              exact IPC.prf.sub_weak
+                (Δ := (↑(FS E (extend s (singleton q1))) : Set Form))
+                (Γ := (Γ ⸴ P)) (p := A) hPrf1 hSubP
 
             have hΓQ : (Set.insert Q Γ) ⊢ᵢ A := by
-              have hset : (↑(insert Q (FS E s)) : Set Form) = Set.insert Q Γ := by
-                ext p; simp [Γ]
-                exact Iff.symm (Eq.to_iff rfl)
-              simpa [hFS2, hset, Γ] using hPrf2
+              have hSubQ :
+                  (↑(FS E (extend s (singleton q2))) : Set Form) ⊆ (Set.insert Q Γ) := by
+                intro p hp
+                have hp' : p ∈ FS E (extend s (singleton q2)) := by simpa using hp
+                have hp'' : p ∈ insert Q (FS E s) := by simpa [hFS2] using hp'
+                rcases Finset.mem_insert.mp hp'' with hpQ | hpΓ
+                · exact Or.inl hpQ
+                · exact Or.inr (by simpa [Γ] using hpΓ)
+              exact IPC.prf.sub_weak
+                (Δ := (↑(FS E (extend s (singleton q2))) : Set Form))
+                (Γ := Set.insert Q Γ) (p := A) hPrf2 hSubQ
 
             -- or elimination
             have hΓA : Γ ⊢ᵢ A :=
@@ -849,14 +767,14 @@ theorem barIndStep_concrete
               hall q hChild
 
             have hFS : FS E (extend s (singleton q)) = FS E s := by
-  -- 把 runState(child).Fs 化成 FStep(runState s) q
+  -- Rewrite `runState(child).Fs` as `FStep (runState s) q`.
               have hstep :
       (runState E (extend s (singleton q))).Fs
         = FStep E (runState E s) q :=
     IPC.VeldmanConcrete.Fs_extend_singleton (E := E) (s := s) (q := q)
 
-  -- 这里是在 Case 3 的非 split 分支，你的 q 实际就是 0
-  -- 在这种情况下，FStep 直接返回 st.Fs
+  -- Here we are in the non-splitting branch of Case 3, so the actual digit `q` is `0`.
+  -- In this situation `FStep` returns `st.Fs` directly.
               simpa [FS, st, IPC.VeldmanConcrete.FStep, hk0, hk1, hk2, hW, hp, q] using hstep
             simpa [Γ, hFS] using hChildPrf
 
@@ -875,13 +793,13 @@ theorem barIndStep_concrete
             hall q hChild
 
           have hFS : FS E (extend s (singleton q)) = FS E s := by
-  -- 把 runState(child).Fs 化成 FStep(runState s) q
+  -- Rewrite `runState(child).Fs` as `FStep (runState s) q`.
             have hstep :
       (runState E (extend s (singleton q))).Fs
         = FStep E (runState E s) q :=
     IPC.VeldmanConcrete.Fs_extend_singleton (E := E) (s := s) (q := q)
 
-  -- 这里是 Case 3 且 “不是析取/不是 split” 的分支，所以只允许 q=0，FStep 返回 st.Fs
+  -- This is the Case 3 branch where the formula is not a disjunction or we are not in split mode; hence only `q = 0` is allowed and `FStep` returns `st.Fs`.
             simpa [FS, st, IPC.VeldmanConcrete.FStep, hk0, hk1, hk2, hW, q] using hstep
 
           simpa [Γ, hFS] using hChildPrf

@@ -93,22 +93,22 @@ lemma Finset.subset_some_prefix {E : _root_.Enumerations} (V : VeldmanFan E) (a 
   · intro _hΔ
     refine ⟨0, ?_⟩
     intro p hp
-    exact False.elim (by simpa using hp)
+    exact False.elim (by simp at hp)
   · intro x Δ hxNotMem ih hAll
     -- hAll : (↑(insert x Δ) : Set Form) ⊆ Gamma V a
-    have hxGamma : x ∈ Gamma V a := hAll (by simp)
+    have hxGamma : x ∈ Gamma V a := by
+      exact hAll (Finset.mem_insert_self x Δ)
     rcases hxGamma with ⟨nx, hxIn⟩
 
     have hAll' : (↑Δ : Set Form) ⊆ Gamma V a := by
       intro p hp
-      exact hAll (by simp [hp])
+      exact hAll (Finset.mem_insert.mpr (Or.inr hp))
     rcases ih hAll' with ⟨N, hN⟩
 
     let M := Nat.max nx N
     refine ⟨M, ?_⟩
     intro p hp
-    have hp' : p = x ∨ p ∈ Δ := by
-      simpa [Finset.mem_insert] using hp
+    have hp' : p = x ∨ p ∈ Δ := Finset.mem_insert.mp hp
     cases hp' with
     | inl hpx =>
         subst hpx
@@ -159,27 +159,32 @@ namespace Scheduler
 open IPC
 
 lemma le_pair_right (a b : ℕ) : b ≤ Nat.pair a b := by
-  by_cases h : a < b
-  · simp [Nat.pair, h]
-    have hb : b ≤ b * b := by
-      cases b with
-      | zero => simp
-      | succ b =>
-          have h1 : (1 : ℕ) ≤ Nat.succ b := Nat.succ_le_succ (Nat.zero_le b)
-          have := Nat.mul_le_mul_left (Nat.succ b) h1
-          simpa [Nat.mul_one] using this
-    exact Nat.le_trans hb (Nat.le_add_right _ _)
-  · simp [Nat.pair, h]
+  exact Nat.right_le_pair a b
+
+
+lemma le_pairEncodeBin_right (n m : ℕ) : m ≤ IPC.pairEncodeBin n m := by
+  induction n with
+  | zero =>
+      simpa [IPC.pairEncodeBin, Nat.bit, Nat.mul_comm] using
+        (Nat.le_mul_of_pos_left m (by decide : 0 < 2))
+  | succ n ih =>
+      have hstep : IPC.pairEncodeBin n m ≤ IPC.pairEncodeBin (n + 1) m := by
+        calc
+          IPC.pairEncodeBin n m ≤ 2 * IPC.pairEncodeBin n m := by
+            simpa [Nat.mul_comm] using
+              (Nat.le_mul_of_pos_left (IPC.pairEncodeBin n m) (by decide : 0 < 2))
+          _ ≤ 2 * IPC.pairEncodeBin n m + 1 := Nat.le_succ _
+          _ = IPC.pairEncodeBin (n + 1) m := by simp [IPC.pairEncodeBin, Nat.bit]
+      exact Nat.le_trans ih hstep
 
 
 lemma le_schedEncode_k0 (n m : ℕ) : m ≤ IPC.schedEncode ⟨n, m, IPC.k0⟩ := by
-  have hm : m ≤ Nat.pair n m := le_pair_right n m
-  have hmul : Nat.pair n m ≤ 3 * Nat.pair n m := by
-    have : (1 : ℕ) ≤ 3 := by decide
-    have := Nat.mul_le_mul_right (Nat.pair n m) this
-    simpa [one_mul] using this
-  have : m ≤ 3 * Nat.pair n m := Nat.le_trans hm hmul
-  simpa [IPC.schedEncode, IPC.k0] using this
+  have hm : m ≤ IPC.pairEncodeBin n m := le_pairEncodeBin_right n m
+  have hmul : IPC.pairEncodeBin n m ≤ 3 * IPC.pairEncodeBin n m := by
+    simpa [Nat.mul_comm] using
+      (Nat.le_mul_of_pos_left (IPC.pairEncodeBin n m) (by decide : 0 < 3))
+  have : m ≤ 3 * IPC.pairEncodeBin n m := Nat.le_trans hm hmul
+  simpa [IPC.schedEncode, IPC.schedEncodeBin, IPC.k0] using this
 
 end Scheduler
 
@@ -237,7 +242,7 @@ lemma allowedStep_of_admitted_prefix
     calc
       runStateAux E s₁ t (Nat.le_of_succ_le le_rfl)
           = runStateAux E s₁ t (Nat.le_trans le_rfl (VeldmanConcrete.Prefix_len_le hPref)) := by
-              simpa using hEq_left
+              simp
       _ = runStateAux E s₀ t le_rfl := by simpa using hEq_aux
       _ = runState E s₀ := this
 
@@ -271,11 +276,11 @@ lemma runState_finitize_succ
     calc
       runStateAux E s₁ t (Nat.le_of_succ_le le_rfl)
           = runStateAux E s₁ t (Nat.le_trans le_rfl (VeldmanConcrete.Prefix_len_le hPref)) := by
-              simpa using hEq_left
+              simp
       _ = runStateAux E s₀ t le_rfl := by simpa using hEq_aux
       _ = runState E s₀ := this
 
-  simp [runState, runStateAux, s₀, s₁, hSt]
+  simp [runState]
   exact (Eq.to_iff
         (congrArg
           (Eq (runStateAux E (finitize a (t + 1)) (finitize a (t + 1)).len (runState._proof_1 (finitize a (t + 1)))))
@@ -326,75 +331,105 @@ lemma finite_ctx {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) :
 
   induction h with
   | ax hp =>
-    rename_i p'   -- 把分支里的结论公式命名成 p'
-    refine ⟨{p'}, ?_, ?_⟩
+    rename_i p'   -- Rename the branch conclusion formula to `p'`.
+    refine ⟨insert p' (∅ : Finset Form), ?_, ?_⟩
     · intro q hq
-      have : q = p' := by simpa using hq
-      simpa [this] using hp
-    · apply prf.ax
-      simp
+      rcases Finset.mem_insert.mp hq with hqeq | hqempty
+      · subst hqeq
+        exact hp
+      · cases hqempty
+    · exact prf.ax (Γ := (↑(insert p' (∅ : Finset Form)) : Set Form))
+        (p := p') (Finset.mem_insert_self p' (∅ : Finset Form))
   | k =>
     refine ⟨(∅ : Finset Form), ?_⟩
     constructor
     · intro q hq; cases hq
-    · simpa using (prf.k (Γ := (↑(∅ : Finset Form) : Set Form)))
+    · exact prf.k (Γ := (↑(∅ : Finset Form) : Set Form))
 
   | s =>
     refine ⟨(∅ : Finset Form), ?_⟩
     constructor
     · intro q hq; cases hq
-    · simpa using (prf.s (Γ := (↑(∅ : Finset Form) : Set Form)))
+    · exact prf.s (Γ := (↑(∅ : Finset Form) : Set Form))
 
   | exf =>
     refine ⟨(∅ : Finset Form), ?_⟩
     constructor
     · intro q hq; cases hq
-    · simpa using (prf.exf (Γ := (↑(∅ : Finset Form) : Set Form)))
+    · exact prf.exf (Γ := (↑(∅ : Finset Form) : Set Form))
   | pr1 =>
       refine ⟨(∅ : Finset Form), ?_⟩
       constructor
       · intro q hq; cases hq
-      · simpa using (prf.pr1 (Γ := (↑(∅ : Finset Form) : Set Form)))
+      · exact prf.pr1 (Γ := (↑(∅ : Finset Form) : Set Form))
   | pr2 =>
       refine ⟨(∅ : Finset Form), ?_⟩
       constructor
       · intro q hq; cases hq
-      · simpa using (prf.pr2 (Γ := (↑(∅ : Finset Form) : Set Form)))
+      · exact prf.pr2 (Γ := (↑(∅ : Finset Form) : Set Form))
   | pair =>
       refine ⟨(∅ : Finset Form), ?_⟩
-      simpa using (prf.pair (Γ := (↑(∅ : Finset Form) : Set Form)))
+      constructor
+      · intro q hq; cases hq
+      · exact prf.pair (Γ := (↑(∅ : Finset Form) : Set Form))
   | inl =>
       refine ⟨(∅ : Finset Form), ?_⟩
-      simpa using (prf.inl (Γ := (↑(∅ : Finset Form) : Set Form)))
+      constructor
+      · intro q hq; cases hq
+      · exact prf.inl (Γ := (↑(∅ : Finset Form) : Set Form))
   | inr =>
       refine ⟨(∅ : Finset Form), ?_⟩
-      simpa using (prf.inr (Γ := (↑(∅ : Finset Form) : Set Form)))
+      constructor
+      · intro q hq; cases hq
+      · exact prf.inr (Γ := (↑(∅ : Finset Form) : Set Form))
   | case =>
       refine ⟨(∅ : Finset Form), ?_⟩
-      simpa using (prf.case (Γ := (↑(∅ : Finset Form) : Set Form)))
+      constructor
+      · intro q hq; cases hq
+      · exact prf.case (Γ := (↑(∅ : Finset Form) : Set Form))
   | mp hpq hp ihpq ihp =>
       rcases ihpq with ⟨Δ₁, hΔ₁sub, hΔ₁prf⟩
       rcases ihp  with ⟨Δ₂, hΔ₂sub, hΔ₂prf⟩
-      refine ⟨Δ₁ ∪ Δ₂, ?_, ?_⟩
-      · intro q hq
-        have hq' : q ∈ (Δ₁ : Set Form) ∨ q ∈ (Δ₂ : Set Form) := by
-          simpa [Finset.mem_union] using hq
-        cases hq' with
-        | inl hq1 => exact hΔ₁sub hq1
-        | inr hq2 => exact hΔ₂sub hq2
-      · have hsub1 : (↑Δ₁ : Set Form) ⊆ (↑(Δ₁ ∪ Δ₂) : Set Form) := by
-          intro q hq
-          simpa [Finset.mem_union] using Or.inl (show q ∈ Δ₁ from hq)
-        have hsub2 : (↑Δ₂ : Set Form) ⊆ (↑(Δ₁ ∪ Δ₂) : Set Form) := by
-          intro q hq
-          simpa [Finset.mem_union] using Or.inr (show q ∈ Δ₂ from hq)
-        have hpq' : (↑(Δ₁ ∪ Δ₂) : Set Form) ⊢ᵢ _ :=
-          prf.sub_weak (Γ := (↑(Δ₁ ∪ Δ₂) : Set Form)) (Δ := (↑Δ₁ : Set Form)) (p := _)
-            hΔ₁prf hsub1
-        have hp'  : (↑(Δ₁ ∪ Δ₂) : Set Form) ⊢ᵢ _ :=
-          prf.sub_weak (Γ := (↑(Δ₁ ∪ Δ₂) : Set Form)) (Δ := (↑Δ₂ : Set Form)) (p := _)
-            hΔ₂prf hsub2
-        exact prf.mp hpq' hp'
+      have merge :
+          ∀ (Δ₂' : Finset Form), (↑Δ₂' : Set Form) ⊆ Γ →
+            ∃ Δ : Finset Form,
+              (↑Δ₁ : Set Form) ⊆ (↑Δ : Set Form) ∧
+              (↑Δ₂' : Set Form) ⊆ (↑Δ : Set Form) ∧
+              (↑Δ : Set Form) ⊆ Γ := by
+        intro Δ₂' hΔ₂'sub
+        induction Δ₂' using Finset.induction_on with
+        | empty =>
+            refine ⟨Δ₁, ?_, ?_, ?_⟩
+            · intro q hq
+              exact hq
+            · intro q hq
+              cases hq
+            · exact hΔ₁sub
+        | insert x Δ₂' hx ih =>
+            have hxΓ : x ∈ Γ := hΔ₂'sub (Finset.mem_insert_self x Δ₂')
+            have htail : (↑Δ₂' : Set Form) ⊆ Γ := by
+              intro q hq
+              exact hΔ₂'sub (Finset.mem_insert.mpr (Or.inr hq))
+            rcases ih htail with ⟨Δ, hsub1, hsub2, hΔsub⟩
+            refine ⟨insert x Δ, ?_, ?_, ?_⟩
+            · intro q hq
+              exact Finset.mem_insert.mpr (Or.inr (hsub1 hq))
+            · intro q hq
+              rcases Finset.mem_insert.mp hq with hqeq | hqtail
+              · exact Finset.mem_insert.mpr (Or.inl hqeq)
+              · exact Finset.mem_insert.mpr (Or.inr (hsub2 hqtail))
+            · intro q hq
+              rcases Finset.mem_insert.mp hq with hqeq | hqΔ
+              · subst hqeq
+                exact hxΓ
+              · exact hΔsub hqΔ
+      rcases merge Δ₂ hΔ₂sub with ⟨Δ, hsub1, hsub2, hΔsub⟩
+      refine ⟨Δ, hΔsub, ?_⟩
+      have hpq' : (↑Δ : Set Form) ⊢ᵢ _ :=
+        prf.sub_weak (Γ := (↑Δ : Set Form)) (Δ := (↑Δ₁ : Set Form)) (p := _) hΔ₁prf hsub1
+      have hp' : (↑Δ : Set Form) ⊢ᵢ _ :=
+        prf.sub_weak (Γ := (↑Δ : Set Form)) (Δ := (↑Δ₂ : Set Form)) (p := _) hΔ₂prf hsub2
+      exact prf.mp hpq' hp'
 
 end prf
 end IPC
@@ -413,8 +448,7 @@ open Concrete
 This is the formalisation of Veldman §3.32 Case 1 (“forced action”). -/
 lemma gamma_isTheory_concrete (E0 : _root_.Enumerations) :
     ∀ a : Branch (V E0), IsTheory (Gamma (V E0) a) := by
-  intro a
-  intro p hp
+  intro a p hp
   -- Extract finite support Δ ⊆ Γₐ with Δ ⊢ p
   rcases IPC.prf.finite_ctx (h := hp) with ⟨Δ, hΔsub, hΔprf⟩
 
@@ -472,8 +506,8 @@ lemma gamma_isTheory_concrete (E0 : _root_.Enumerations) :
 
     have hconc : (E'0.d i).2 = E'0.W (decN st.t) := by
       have : E'0.W (decN st.t) = p := by
-        simpa [E'0, Concrete.Enumerations.toConcrete, hn0, hdecN]
-      simpa [hi2, this]
+        simp [E'0, Concrete.Enumerations.toConcrete, hn0, hdecN]
+      simp [hi2, this]
 
     have hi_le : i ≤ st.t := by simpa [ht_st] using hi_le_t
 
@@ -494,15 +528,15 @@ lemma gamma_isTheory_concrete (E0 : _root_.Enumerations) :
     simpa [st] using hk0
 
   have hForced' : Forced0b E'0 (runState E'0 (finitize a.1 t)) = true := by
-  -- 关键：把 st 展开成 runState ...
+  -- Key step: rewrite `st` back to the corresponding `runState ...` term.
     simpa [st] using hForced
 
   have hq1 : a.1 t = 1 := by
     have hAllowed' := hAllowed
-  -- 先把 AllowedStepb 展开成 if，再用 hForced' 选中 then 分支
+  -- First unfold `AllowedStepb` to its `if`, then use `hForced'` to select the `then` branch.
     simp [AllowedStepb, hk0t] at hAllowed'
-  -- 此时 hAllowed' : if Forced0b ... = true then a.1 t = 1 else (a.1 t = 0 ∨ a.1 t = 1)
-  -- 用 hForced' 把 if 约掉
+  -- At this point `hAllowed'` has the form: if `Forced0b ... = true` then `a.1 t = 1` else `a.1 t = 0 ∨ a.1 t = 1`.
+  -- Now eliminate the `if` using `hForced'`.
     simpa [hForced'] using hAllowed'
 
   -- Now p is inserted at stage t+1.
@@ -525,9 +559,9 @@ lemma gamma_isTheory_concrete (E0 : _root_.Enumerations) :
         simp [hRun, step, FStep, ht0, hk0_dec, hq1]
 
       have hpW : E'0.W (decN t) = p := by
-        simpa [E'0, Concrete.Enumerations.toConcrete, hn0, hdecN]
+        simp [E'0, Concrete.Enumerations.toConcrete, hn0, hdecN]
 
-      simpa [hEq, hpW]
+      simp [hEq, hpW]
 
     simpa [V, Concrete.mkConcreteFan, E'0, Concrete.Enumerations.toConcrete,
       IPC.VeldmanConcrete.FS] using this
@@ -591,7 +625,8 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
   -- singleton proof {A∨B} ⊢ A∨B
   have hax : ((↑({Form.or A B} : Finset Form) : Set Form) ⊢ᵢ Form.or A B) := by
     apply IPC.prf.ax
-    simp
+    change Form.or A B ∈ ({Form.or A B} : Finset Form)
+    exact Finset.mem_singleton_self _
 
   -- get derivation index i with d i = ({A∨B}, A∨B)
   rcases E0.d_complete ({Form.or A B}) (Form.or A B) hax with ⟨i, hi⟩
@@ -651,8 +686,8 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
 
     have hconc : (E'0.d i).2 = E'0.W (decN st.t) := by
       have : E'0.W (decN st.t) = Form.or A B := by
-        simpa [E'0, Concrete.Enumerations.toConcrete, hnAB, hdecN]
-      simpa [hi2, this]
+        simp [E'0, Concrete.Enumerations.toConcrete, hnAB, hdecN]
+      simp [hi2, this]
 
     exact Forced0b_of_witness (E := E'0) (st := st) (i := i) hk0 hi_le hconc hprem
 
@@ -670,17 +705,17 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
   have hk0t : decK (runState E'0 (finitize a.1 t)).t = IPC.k0 := by
     simpa [st] using hk0
 
-  -- 把 hForced 改写成 runState 版本（否则 simp 用不上）
+  -- Rewrite `hForced` into the `runState` form; otherwise `simp` cannot use it here.
   have hForced' : Forced0b E'0 (runState E'0 (finitize a.1 t)) = true := by
     simpa [st] using hForced
 
   have hq1 : a.1 t = 1 := by
     have hAllowed' := hAllowed_t
-  -- 先把 AllowedStepb 展开到 if-then-else
+  -- First unfold `AllowedStepb` to an explicit if-then-else.
     simp [AllowedStepb, hk0t] at hAllowed'
-  -- 此时 hAllowed' :
+  -- At this stage `hAllowed'` says:
   --   if Forced0b E'0 (runState ...) = true then a.1 t = 1 else a.1 t = 0 ∨ a.1 t = 1
-  -- 用 hForced' 把 if 约掉，得到 a.1 t = 1
+  -- Now eliminate the `if` using `hForced'`, yielding `a.1 t = 1`.
     simpa [hForced'] using hAllowed'
 
   -- Move to the corresponding k2-time two steps later.
@@ -719,11 +754,11 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
 
     have hdecN2 : decN (runState E'0 (finitize a.1 (t+2))).t = nAB := by
       have hdecN0 : decN t = nAB := by
-        simp [decN, hdec]   -- 由 hdec : schedDecode t = (nAB,m,k0)
+        simp [decN, hdec]   -- Here `hdec : schedDecode t = (nAB, m, k0)`.
       calc
         decN (runState E'0 (finitize a.1 (t+2))).t
-          = decN (t+2) := by simpa [ht2]
-      _ = decN t := by simpa [hDec.1]
+          = decN (t+2) := by simp [ht2]
+      _ = decN t := by simp [hDec.1]
       _ = nAB := hdecN0
 
     have hW2 :
@@ -733,9 +768,9 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
     have hk21 : (IPC.k2 : Fin 3) ≠ IPC.k1 := by decide
 
     have hAllowed' := hAllowed_t2
-  -- 这一步会把 decK(...) 重写成 k2，然后 if k2=k0 / if k2=k1 被 hk20 hk21 消掉
+  -- This rewrites `decK(...)` to `k2`, and then `if k2 = k0` / `if k2 = k1` are discharged by `hk20` and `hk21`.
     simp [AllowedStepb, hk2t, hk20, hk21, hW2, hPrev2] at hAllowed'
-  -- 现在 hAllowed' 就是 (a.1 (t+2)=1 ∨ a.1 (t+2)=2)
+  -- Now `hAllowed'` is exactly `a.1 (t+2) = 1 ∨ a.1 (t+2) = 2`.
     exact hAllowed'
 
   -- Finally, at stage t+3 the machine inserts A or B accordingly.

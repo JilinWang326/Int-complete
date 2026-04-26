@@ -1,18 +1,29 @@
-/-
-This file defines natural sequences, here defined as functions ℕ → ℕ
-Also defined here are the comparisons =, ≠, <, ≤ and #
--/
 
 import Mathlib
 
+/-- The ambient type of infinite natural sequences `α : ℕ → ℕ` from paper §3.1. -/
 def NatSeq := ℕ → ℕ
+/-!
+# Infinite sequences for Veldman's spread semantics
+
+This file provides the Lean representation of the infinite sequences `α : ℕ → ℕ`
+that appear throughout Veldman 1976, especially paper §3.1, where elements of
+the universal spread/fan are arbitrary infinite sequences of natural numbers.
+
+This is auxiliary infrastructure rather than a separate numbered item in the paper:
+- `NatSeq` corresponds to the ambient sequence space of branches;
+- the relations `='`, `<`, `≤`, and `#` provide the constructive comparison
+  tools used later for prefixes, branches, and subfans.
+-/
 
 notation "𝒩" => NatSeq
 
 namespace NatSeq
 
+/-- The constantly-zero sequence, used as a canonical base point in the ambient space `𝒩`. -/
 def zero : 𝒩 := fun _ => 0
 
+/-- Pointwise equality of infinite sequences. -/
 def seq_eq (a b : 𝒩) : Prop := ∀ n : ℕ, a n = b n
 
 infix:50 " =' " => seq_eq
@@ -23,11 +34,13 @@ def seq_ne (a b : 𝒩) : Prop := ¬ a =' b
 
 infix:50 " ≠' " => seq_ne
 
+/-- Lexicographic-style strict order: the first differing coordinate makes `a` smaller than `b`. -/
 def seq_lt (a b : 𝒩) : Prop := ∃ n : ℕ, (∀ i : ℕ, i < n → a i = b i) ∧ a n < b n
 
 instance : LT 𝒩 where
   lt := seq_lt
 
+/-- The induced non-strict order on `𝒩`. -/
 def seq_le (a b : 𝒩) : Prop := ∀ n : ℕ, (∀ i : ℕ, i < n → a i = b i) → a n ≤ b n
 
 instance : LE 𝒩 where
@@ -235,6 +248,7 @@ theorem eq_of_le_le {a b : 𝒩} (hab : a ≤ b) (hba : b ≤ a) : a =' b := by
       intro i hi
       exact (hd i hi).symm
     exact Nat.le_antisymm hle hge
+/-- Positive inequality (apartness): a witness index where the two sequences differ. -/
 @[simp]
 def apart (a b : 𝒩) : Prop := ∃ n, a n ≠ b n
 
@@ -322,7 +336,7 @@ theorem apart_cotrans (a b : 𝒩) (h : a # b) : ∀ c : 𝒩, a # c ∨ c # b :
 @[symm] theorem apart_symm (a b : 𝒩) : a # b ↔ b # a := by
   constructor <;> (intro ⟨n, hn⟩; exact ⟨n, hn.symm⟩)
 
--- 0 is the smallest sequence
+/-- The zero sequence is the least element for the order on `𝒩`. -/
 theorem zero_le' (a : 𝒩) : zero ≤ a := by
   intro n _
   simp only [zero, Nat.zero_le]
@@ -336,9 +350,12 @@ theorem apart_zero_lt (a : 𝒩) (h : a # zero) : zero < a := by
     exact h₁ alt
   · exact agt
 
-/-
-There are uncountably (defined positively) many natural sequences.
-The proof of this theorem is Cantor's Diagonal argument
+/--
+Cantor-style diagonal lemma for `𝒩`.
+
+This is not a numbered statement in Veldman's paper, but it explains why the space of
+branches is genuinely continuum-like, matching the remark after Definition 1.2 and the
+construction of a universal fan in §3.
 -/
 theorem uncountable (f : ℕ → 𝒩) : ∃ a : 𝒩, ∀ n : ℕ, a # (f n) := by
   use fun n => (f n n) + 1

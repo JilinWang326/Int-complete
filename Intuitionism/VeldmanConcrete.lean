@@ -4,6 +4,18 @@ import Intuitionism.fan
 import Intuitionism.IPC
 import Intuitionism.Enumeration
 
+/-!
+# Concrete recursive realization of Veldman's `Σ` and `Γ`
+
+This file implements the concrete state-machine version of the recursive
+construction from paper §3.31-§3.32 and packages the resulting fan data used
+later for the universal modified Kripke model of §3.41.
+
+As elsewhere in this development, the code works in the propositional fragment:
+the constant set `D(a)` and the quantifier cases are simplified away, and the
+comments mark those simplifications explicitly.
+-/
+
 namespace Finset
 
 /-
@@ -206,7 +218,7 @@ Behavior:
 - only when decK = k0 do we search for a witness; otherwise return false.
 -/
 def Forced0b (E : Enumerations) (st : State) : Bool :=
-  if hk : decK st.t = k0 then
+  if _ : decK st.t = k0 then
     anyUpTo st.t (fun i =>
       decide ((E.d i).2 = E.W (decN st.t) ∧ (E.d i).1 ⊆ st.Fs))
   else
@@ -230,9 +242,9 @@ Here `FStep` computes “the next Fs = Γ(extend s q)”:
 def FStep (E : Enumerations) (st : State) (q : ℕ) : Finset Form :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if _ : k = k0 then
     if q = 1 then insert (E.W n) st.Fs else st.Fs
-  else if hk1 : k = k1 then
+  else if _ : k = k1 then
     st.Fs
   else
     match E.W n with
@@ -262,12 +274,12 @@ Correspondence (simplified for the propositional version):
 def AllowedStepb (E : Enumerations) (st : State) (q : ℕ) : Bool :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if _ : k = k0 then
     if Forced0b E st then
       decide (q = 1)
     else
       decide (q = 0 ∨ q = 1)
-  else if hk1 : k = k1 then
+  else if _ : k = k1 then
     decide (q = 0)
   else
     match E.W n with
@@ -280,22 +292,15 @@ def AllowedStepb (E : Enumerations) (st : State) (q : ℕ) : Bool :=
         decide (q = 0)
 
 /-
-论文 §3.32：状态转移（读入一个 q）
-用到：`FStep`。
-把 t 加 1，并滚动 prev2/prev1，同时更新 Fs。
+Paper §3.32: state transition for reading one extra digit `q`.
+Uses `FStep`.
+Increment `t`, shift `prev2/prev1`, and update `Fs`.
 -/
 def step (E : Enumerations) (st : State) (q : ℕ) : State :=
 { t := st.t + 1
   prev2 := st.prev1
   prev1 := q
   Fs := FStep E st q }
-
-/-
-Paper §3.32: state transition (consuming a q)
-Uses: `FStep`.
-Increment t by 1, shift prev2/prev1, and update Fs.
--/
-
 def runStateAux (E : Enumerations) (s : fin_seq) :
   (n : ℕ) → n ≤ s.len → State
 | 0, _ => initState
@@ -488,31 +493,31 @@ lemma FStep_mono (E : Enumerations) (st : State) (q : ℕ) :
     by_cases hq : q = 1
     · subst hq
       exact Finset.subset_insert _ _
-    · simp [hq, Finset.Subset.rfl]
+    · simp [hq]
   · by_cases hk1 : decK st.t = k1
     · have hk10 : (k1 : Fin 3) ≠ k0 := by decide
-      simp [hk0, hk1, hk10]
+      simp [ hk1, hk10]
     · simp [hk0, hk1]
       cases hW : E.W (decN st.t) with
       | or A B =>
           by_cases hp : st.prev2 = 1
-          · simp [hW, hp]
+          · simp [hp]
             by_cases hq1 : q = 1
             · subst hq1
               exact Finset.subset_insert _ _
             · by_cases hq2 : q = 2
               · subst hq2
                 exact Finset.subset_insert _ _
-              · simp [hq1, hq2, Finset.Subset.rfl]
-          · simp [hW, hp, Finset.Subset.rfl]
+              · simp [hq1, hq2]
+          · simp [hp]
       | atom n =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | «I» =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | imp p q =>
-          simp [hW, Finset.Subset.rfl]
+          simp
       | and p q =>
-          simp [hW, Finset.Subset.rfl]
+          simp
 
 /-- After one `step`, Fs is monotone (only grows) -/
 lemma step_Fs_mono (E : Enumerations) (st : State) (q : ℕ) :
@@ -534,7 +539,7 @@ lemma runStateAux_Fs_mono_le (E : Enumerations) (s : fin_seq) :
   | refl =>
       have hEq : runStateAux E s n hn = runStateAux E s n hm :=
         runStateAux_proof_irrel (E := E) (s := s) n hn hm
-      simpa [hEq] using (Finset.subset_rfl : (runStateAux E s n hn).Fs ⊆ (runStateAux E s n hn).Fs)
+      simp
   | @step m hnm ih =>
       have hm' : m ≤ s.len := Nat.le_of_succ_le hm
       have ih' :
@@ -554,8 +559,7 @@ Uses: `Sigma`, `Admittedb`.
 lemma Sigma_eq_zero_iff (E : Enumerations) (s : fin_seq) :
     Sigma E s = 0 ↔ Admittedb E s = true := by
   unfold Sigma
-  cases hs : Admittedb E s <;> simp [hs]
-
+  cases hs : Admittedb E s <;> simp
 
 /-
 Paper §3.32 base case: the empty sequence is admitted
@@ -576,16 +580,15 @@ lemma Prefix_child (s : fin_seq) (q : ℕ) : Prefix s (extend s (singleton q)) :
   intro i
   have hi : (Fin.castLE (Nat.le_add_right s.len 1) i).val < s.len := by
     simp
-  simp [fin_seq.extend, hi]
+  simp [fin_seq.extend]
 
 /-- The last element of extend s [q] is q -/
 lemma extend_singleton_last (s : fin_seq) (q : ℕ) :
     (extend s (singleton q)).seq
       ⟨s.len, by
-        simp [fin_seq.extend, fin_seq.singleton]⟩
+        exact Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩
     = q := by
-  have hnot : ¬ (s.len < s.len) := Nat.lt_irrefl _
-  simp [fin_seq.extend, fin_seq.singleton, hnot, Nat.sub_self]
+  simp [fin_seq.extend, fin_seq.singleton]
 
 /-
 §3.1: “constructive choice” used to prove spreadness
@@ -596,9 +599,9 @@ This provides the witness for “there exists an extendable branch” in the spr
 def chooseNext (E : Enumerations) (st : State) : ℕ :=
   let n := decN st.t
   let k := decK st.t
-  if hk0 : k = k0 then
+  if _ : k = k0 then
     if Forced0b E st then 1 else 0
-  else if hk1 : k = k1 then
+  else if _ : k = k1 then
     0
   else
     match E.W n with
@@ -618,11 +621,10 @@ lemma Allowed_chooseNext (E : Enumerations) (st : State) :
   · simp [hk0]
   · by_cases hk1 : decK st.t = k1
     · have hk10 : (k1 : Fin 3) ≠ k0 := by decide
-      simp [hk0, hk1, hk10]
+      simp [hk1, hk10]
     · simp [hk0, hk1]
-      cases hW : E.W (decN st.t) <;> simp [hW]
+      cases hW : E.W (decN st.t) <;> simp
       · by_cases hp : st.prev2 = 1 <;> simp [hp]
-
 
 lemma and_eq_true_iff (a b : Bool) :
     (a && b = true) ↔ (a = true ∧ b = true) := by
@@ -644,9 +646,14 @@ lemma Sigma_spread_iff (E : Enumerations) (s : fin_seq) :
     refine ⟨q, ?_⟩
     let child : fin_seq := extend s (singleton q)
 
-    have hSucc : s.len.succ ≤ child.len := by
+    have hChildLen : child.len = s.len + 1 := by
       simp [child, fin_seq.extend, fin_seq.singleton]
+    have hSucc : s.len.succ ≤ child.len := by
+      rw [hChildLen, Nat.succ_eq_add_one]
     have hPred : s.len ≤ child.len := Nat.le_of_succ_le hSucc
+    have hDigitLt : s.len < child.len := by
+      rw [hChildLen]
+      exact Nat.lt_add_of_pos_right (Nat.succ_pos 0)
 
     have hPref : Prefix s child := Prefix_child s q
     have hEqAdm :
@@ -691,12 +698,10 @@ lemma Sigma_spread_iff (E : Enumerations) (s : fin_seq) :
 
       have hAllowedChild :
           AllowedStepb E (runStateAux E child s.len (Nat.le_of_succ_le hnChild))
-            (child.seq ⟨s.len, by
-              simp [child, fin_seq.extend, fin_seq.singleton]⟩)
+            (child.seq ⟨s.len, hDigitLt⟩)
             = true := by
         have hDigit :
-            child.seq ⟨s.len, by
-              simp [child, fin_seq.extend, fin_seq.singleton]⟩ = q := by
+            child.seq ⟨s.len, hDigitLt⟩ = q := by
           simpa [child] using extend_singleton_last s q
 
         have hStateEq' :
@@ -713,7 +718,7 @@ lemma Sigma_spread_iff (E : Enumerations) (s : fin_seq) :
 
       have hAuxSucc :
           admittedAuxb E child s.len.succ hnChild = true := by
-        simp [admittedAuxb, hnChild, hChildAux0, hAllowedChild]
+        simp [admittedAuxb, hChildAux0, hAllowedChild]
 
       simpa [Admittedb, child, fin_seq.extend, fin_seq.singleton] using hAuxSucc
 
@@ -724,20 +729,23 @@ lemma Sigma_spread_iff (E : Enumerations) (s : fin_seq) :
     have hChildAd : Admittedb E child = true :=
       (Sigma_eq_zero_iff (E := E) child).1 hn0
 
-    have hSucc : s.len.succ ≤ child.len := by
+    have hChildLen : child.len = s.len + 1 := by
       simp [child, fin_seq.extend, fin_seq.singleton]
+    have hSucc : s.len.succ ≤ child.len := by
+      rw [hChildLen, Nat.succ_eq_add_one]
     have hPred' : s.len ≤ child.len := Nat.le_of_succ_le hSucc
+    have hDigitLt : s.len < child.len := by
+      rw [hChildLen]
+      exact Nat.lt_add_of_pos_right (Nat.succ_pos 0)
 
     have hChildAux_succ :
-        admittedAuxb E child s.len.succ (by
-          simp [child, fin_seq.extend, fin_seq.singleton]) = true := by
+        admittedAuxb E child s.len.succ hSucc = true := by
       simpa [Admittedb, child] using hChildAd
 
     have hChildAux_pred : admittedAuxb E child s.len hPred' = true := by
       have : admittedAuxb E child s.len hPred' &&
               (let st := runStateAux E child s.len hPred'
-               let q  := child.seq ⟨s.len, by
-                 simp [child, fin_seq.extend, fin_seq.singleton]⟩
+               let q  := child.seq ⟨s.len, hDigitLt⟩
                AllowedStepb E st q) = true := by
         simpa [admittedAuxb, child] using hChildAux_succ
       exact ((and_eq_true_iff _ _).1 this).1
@@ -781,7 +789,7 @@ lemma AllowedStepb_bound (E : Enumerations) (st : State) (q : ℕ) :
     · simp [hF] at h
       rcases h with rfl | rfl <;> decide
   by_cases hk1 : decK st.t = k1
-  · simp [hk0, hk1] at h
+  · simp [hk1] at h
     subst h
     decide
   · simp [hk0, hk1] at h
@@ -796,6 +804,7 @@ lemma AllowedStepb_bound (E : Enumerations) (st : State) (q : ℕ) :
       · simp [hp] at h
         subst h
         decide
+
 /-
 §3.1: proving “Σ is a fan law (= spread + bounded branching)”
 This combines the two ingredients above:
@@ -817,32 +826,33 @@ theorem Sigma_is_fan_law (E : Enumerations) : is_fan_law (Sigma E) := by
       (Sigma_eq_zero_iff (E := E) (extend s (singleton m))).1 hm0
 
     let child : fin_seq := extend s (singleton m)
-    have hSucc : s.len.succ ≤ child.len := by
+    have hChildLen : child.len = s.len + 1 := by
       simp [child, fin_seq.extend, fin_seq.singleton]
+    have hSucc : s.len.succ ≤ child.len := by
+      rw [hChildLen, Nat.succ_eq_add_one]
     have hPred' : s.len ≤ child.len := Nat.le_of_succ_le hSucc
+    have hDigitLt : s.len < child.len := by
+      rw [hChildLen]
+      exact Nat.lt_add_of_pos_right (Nat.succ_pos 0)
 
     have hAux_succ :
-        admittedAuxb E child s.len.succ (by
-          simp [child, fin_seq.extend, fin_seq.singleton]) = true := by
+        admittedAuxb E child s.len.succ hSucc = true := by
       simpa [Admittedb, child] using hChildAd
 
     have hAnd :
         admittedAuxb E child s.len hPred' &&
           (let st := runStateAux E child s.len hPred'
-           let q  := child.seq ⟨s.len, by
-             simp [child, fin_seq.extend, fin_seq.singleton]⟩
+           let q  := child.seq ⟨s.len, hDigitLt⟩
            AllowedStepb E st q) = true := by
       simpa [admittedAuxb, child] using hAux_succ
 
     have hLastAllowed :
     (let st := runStateAux E child s.len hPred'
-     let q  := child.seq ⟨s.len, by
-       simp [child, fin_seq.extend, fin_seq.singleton]⟩
+     let q  := child.seq ⟨s.len, hDigitLt⟩
      AllowedStepb E st q) = true := by
       let b : Bool :=
         (let st := runStateAux E child s.len hPred'
-         let q  := child.seq ⟨s.len, by
-           simp[child, fin_seq.extend, fin_seq.singleton]⟩
+         let q  := child.seq ⟨s.len, hDigitLt⟩
          AllowedStepb E st q)
       have hab :
         (admittedAuxb E child s.len hPred' = true ∧ b = true) :=
@@ -860,12 +870,12 @@ theorem Sigma_is_fan_law (E : Enumerations) : is_fan_law (Sigma E) := by
       simpa [hpi] using hEq
 
     have hDigit :
-        child.seq ⟨s.len, by simp [child, fin_seq.extend, fin_seq.singleton]⟩ = m := by
+        child.seq ⟨s.len, hDigitLt⟩ = m := by
       simpa [child] using extend_singleton_last s m
 
     have hAllowed : AllowedStepb E (runState E s) m = true := by
       have : AllowedStepb E (runStateAux E child s.len hPred')
-                (child.seq ⟨s.len, by simp [child, fin_seq.extend, fin_seq.singleton]⟩) = true := by
+                (child.seq ⟨s.len, hDigitLt⟩) = true := by
         simpa using hLastAllowed
       simpa [runState, hStateEq, hDigit] using this
 
@@ -954,3 +964,4 @@ def mkVeldmanFan (E : Enumerations) : VeldmanFan E := by
 
 end VeldmanConcrete
 end IPC
+

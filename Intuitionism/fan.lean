@@ -1,7 +1,19 @@
 import Mathlib
-import Intuitionism.bcp
+
 import Intuitionism.fin_seq
 import Intuitionism.IPC
+
+/-!
+# Spread and fan infrastructure
+
+This file packages the spread/fan language used in paper §3.1 and the bar/fan
+reasoning used later in §4.1 and §4.3.
+
+Some notions here are Lean-level proof infrastructure rather than literal items
+from the paper.  Whenever that happens, the comments state explicitly which part
+of Veldman's argument they are supporting.
+-/
+
 open NatSeq
 open fin_seq
 
@@ -13,7 +25,7 @@ open fin_seq
 def is_spread_law (σ : fin_seq → ℕ) : Prop :=
   σ empty_seq = 0 ∧
     (∀ s : fin_seq, σ s = 0 ↔ ∃ n : ℕ, σ (extend s (singleton n)) = 0)
-#print axioms is_spread_law
+
 /-- Fan law:
     The paper does not give a separate definition of “fan law”, but §3.1 mentions the binary fan,
     and §4.1 uses the fan theorem to extract a uniform bound on a (sub)fan.
@@ -23,7 +35,7 @@ def is_fan_law (β : fin_seq → ℕ) : Prop :=
   is_spread_law β ∧
     (∀ s : fin_seq,
       (β s = 0 → ∃ n : ℕ, ∀ m : ℕ, β (extend s (singleton m)) = 0 → m ≤ n))
-#print axioms is_fan_law
+
 /-- This is purely extracting the first component of `is_fan_law` (fan ⇒ spread). -/
 lemma fan_law_is_spread_law (β : fin_seq → ℕ) (hβ : is_fan_law β) : is_spread_law β :=
   hβ.1
@@ -56,10 +68,10 @@ def is_bar (β : fin_seq → ℕ) (hβ : is_fan_law β) (B : Set fin_seq) : Prop
 
 
 
-
--- complementary law `F`: in the paper, `F` is defined on admitted nodes and takes values in
--- finite subsets of `Sent`.
-abbrev CompLaw (σ : fin_seq → ℕ) := fin_seq → Finset IPC.Form
+/-- The complementary law `Γ`/`F` from paper §3.1, represented as a finite set of formulas at each node.
+In the paper the codomain is finite subsets of `Sent`; here we work in the propositional fragment,
+so the codomain is finite subsets of `IPC.Form`. -/
+abbrev CompLaw (_ : fin_seq → ℕ) := fin_seq → Finset IPC.Form
 
 /-- Initial segment (prefix) relation:
     `Prefix s t` means “`s` is an initial segment of `t`” (corresponding to the paper with `b = t`,
@@ -79,9 +91,9 @@ def MonotoneOnAdmitted (σ : fin_seq → ℕ) (F : CompLaw σ) : Prop :=
     the paper actually uses the fan theorem (§4.1 “using the fan theorem”) and does not state
     bar induction in this form. -/
 def principle_of_bar_induction_std
-    (β : fin_seq → ℕ) (hβ : is_fan_law β) (B : Set fin_seq) (hB : is_bar β hβ B)
-    (C : Set fin_seq) (hBC : B ⊆ C)
-    (hInd :
+    (β : fin_seq → ℕ) (hβ : is_fan_law β) (B : Set fin_seq) (_ : is_bar β hβ B)
+    (C : Set fin_seq) (_ : B ⊆ C)
+    (_ :
       ∀ s : fin_seq,
         β s = 0 →
           (∀ n : ℕ, β (extend s (singleton n)) = 0 → (extend s (singleton n)) ∈ C) →

@@ -5,6 +5,20 @@ import Intuitionism.IPC
 import Intuitionism.Enumeration
 import Intuitionism.VeldmanConcrete
 
+/-!
+# Abstract completeness skeleton
+
+This file isolates the abstract proof architecture behind the universal-model
+argument:
+
+- paper §3.1: branches and the sets `Γ_α`;
+- paper §3.41: the universal modified Kripke model;
+- paper §3.42: the truth lemma;
+- paper §3.43 and §4.4: the final completeness step.
+
+The concrete files later instantiate these abstract interfaces.
+-/
+
 open NatSeq
 open fin_seq
 open IPC
@@ -37,7 +51,7 @@ structure Enumerations where
   d_complete :
       ∀ (Γ : Finset Form) (A : Form),
         ((↑Γ : Set Form) ⊢ᵢ A) → ∃ i : ℕ, d i = (Γ, A)
-  #print axioms Enumerations
+
 
 --------------------------------------------------------------------------------
 
@@ -62,7 +76,7 @@ structure VeldmanFan (E : Enumerations) where
   F : CompLaw S
   F_empty : F empty_seq = ∅
   F_mono : MonotoneOnAdmitted S F
-  #print axioms VeldmanFan
+
 /-- In paper §3.32, Σ(<>) = 0 (the empty sequence is admitted). -/
 lemma Sigma_empty {E : Enumerations} (V : VeldmanFan E) : V.S empty_seq = 0 := by
   exact (V.hS.1).1
@@ -112,7 +126,6 @@ theorem Gamma_semiregular {E : Enumerations} (V : VeldmanFan E)
   refine And.intro ?_ ?_
   · exact Gamma_isTheory (V:=V) a hR
   · exact Gamma_disjunctive (V:=V) a hR
-
 
 /-- Kripke order in U: a ≤ b iff Γₐ ⊆ Γ_b.
     This is the partial order defined in paper §3.41. -/
@@ -379,7 +392,7 @@ theorem ind_step_of_rules {E : Enumerations} (V : VeldmanFan E)
           IPC.prf.or_elim (Γ := Δ) (p := A) (q := B) (r := Q) hAB hA hB
 
         simpa [Δ] using hQ
-#print axioms ind_step_of_rules
+
 end GammaRules
 
 
@@ -394,13 +407,13 @@ by
   refine ⟨b.1, ?_⟩
   intro n
   exact hsub (finitize b.1 n) (b.2 n)
-#print axioms toBranchOfSubfan
+
 @[simp] lemma toBranchOfSubfan_coe {E : Enumerations} (V : VeldmanFan E)
     {T : fin_seq → ℕ} (hT : is_fan_law T)
     (hsub : ∀ s : fin_seq, T s = 0 → V.S s = 0)
     (b : fan T hT) :
     (toBranchOfSubfan V hT hsub b).1 = b.1 := rfl
-#print axioms toBranchOfSubfan_coe
+
 --------------------------------------------------------------------------------
 
 /-!
@@ -456,7 +469,7 @@ structure ImpHardData {E : Enumerations} (V : VeldmanFan E)
       intro s hs0 hall
       exact
         ind_step_of_rules (V := V) (a := a) (W := W) (Q := Q) (T := T) stepRules s hs0 hall
-#print axioms ImpHardData
+
 namespace ImpHardData
 
 /-!
@@ -549,17 +562,25 @@ theorem gamma_imp_hard_skeleton {E : Enumerations}
         (Gamma V a ∪ {W} ∪ (↑(V.F empty_seq) : Set Form)) ⊢ᵢ Q := by
         simpa [C] using hemptyC
 
-      have hF0 : (↑(V.F empty_seq) : Set Form) = (∅ : Set Form) := by
-        ext x
-        simp [V.F_empty]
+      have hsubEmpty :
+          (Gamma V a ∪ {W} ∪ (↑(V.F empty_seq) : Set Form)) ⊆ (Gamma V a ∪ {W}) := by
+        intro x hx
+        rcases hx with hxGW | hxF
+        · exact hxGW
+        · have hxF0 : x ∈ V.F empty_seq := hxF
+          have hxFempty : x ∈ (∅ : Finset Form) := by
+            simp [V.F_empty] at hxF0
 
-      have hempty1 :
-        (Gamma V a ∪ {W} ∪ (∅ : Set Form)) ⊢ᵢ Q := by
-        simpa [hF0] using hempty0
+          exact False.elim (Finset.notMem_empty x hxFempty)
 
       have hempty2 :
-        (Gamma V a ∪ {W}) ⊢ᵢ Q := by
-        simpa [Set.union_empty] using hempty1
+          (Gamma V a ∪ {W}) ⊢ᵢ Q := by
+        exact prf.sub_weak
+          (Δ := (Gamma V a ∪ {W} ∪ (↑(V.F empty_seq) : Set Form)))
+          (Γ := (Gamma V a ∪ {W}))
+          (p := Q)
+          hempty0
+          hsubEmpty
 
       have hsub : (Gamma V a ∪ {W}) ⊆ (Gamma V a ⸴ W) := by
         intro x hx
@@ -574,7 +595,7 @@ theorem gamma_imp_hard_skeleton {E : Enumerations}
     exact prf.deduction (Γ := Gamma V a) (a := W) (b := Q) h_goal
 
   exact hTa h_prf
-#print axioms gamma_imp_hard_skeleton
+
 -- (the rest of your code continues unchanged, with comments already in English or to be translated similarly)
 
 
@@ -613,7 +634,7 @@ theorem implication_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules
         (BarIndStd := BarIndStd) a W Q data
     exact hhard hcond
 
-#print axioms implication_lemma
+
 
 /-- If Γ is a theory and `I ∈ Γ`, then every formula belongs to Γ (explosion). -/
 lemma mem_of_I {Γ : Set Form} (hT : IsTheory Γ) (A : Form) :
@@ -689,8 +710,7 @@ theorem truth_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules V)
             a P Q (impData a P Q)
         exact hIff.2 hRHS
 
-      · intro hMem
-        intro b hbW haW hRel hb_forcesP
+      · intro hMem b hbW haW hRel hb_forcesP
         have hab : Gamma V a ⊆ Gamma V b := by
           simpa [U, leU] using hRel
 
@@ -848,11 +868,19 @@ theorem bar_lemma {E : Enumerations} (V : VeldmanFan E) (A : Form)
   have hemptyPrf : ((↑(V.F empty_seq) : Set Form) ⊢ᵢ A) := by
     simpa [C] using hemptyC
 
-  have hF0 : (↑(V.F empty_seq) : Set Form) = (∅ : Set Form) := by
-    ext x
-    simp [V.F_empty]
+  have hsub0 : (↑(V.F empty_seq) : Set Form) ⊆ (∅ : Set Form) := by
+    intro x hx
+    have hx0 : x ∈ V.F empty_seq := hx
+    have hxEmpty : x ∈ (∅ : Finset Form) := by
+      simp [V.F_empty] at hx0
+    exact False.elim (Finset.notMem_empty x hxEmpty)
 
-  simpa [hF0] using hemptyPrf
+  exact prf.sub_weak
+    (Δ := (↑(V.F empty_seq) : Set Form))
+    (Γ := (∅ : Set Form))
+    (p := A)
+    hemptyPrf
+    hsub0
 
 theorem bar_lemma' {E : Enumerations} (V : VeldmanFan E) (ctx : CompletenessCtx V) (A : Form) :
   (∀ a : Branch V, A ∈ Gamma V a) → ((∅ : Set Form) ⊢ᵢ A) := by
@@ -923,6 +951,3 @@ theorem semantic_completeness' {E : Enumerations}
   have hValidU : Valid (U V) A := by
     simpa using (hAllValid (M := U V))
   exact universal_model_completeness' (V := V) ctx A hValidU
-#print axioms semantic_completeness'
-#check CompletenessCtx
-#check semantic_completeness'

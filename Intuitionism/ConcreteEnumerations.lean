@@ -1,4 +1,4 @@
-import Intuitionism.completeness
+import Intuitionism.EmptyCompleteness
 import Mathlib.Data.Nat.BitIndices
 
 /-!
@@ -24,7 +24,7 @@ namespace DefaultEnumerations
 /-- Syntactic rank of a propositional formula. -/
 def formRank : Form → ℕ
   | Form.atom _ => 0
-  | Form.I => 0
+  | Form.bot => 0
   | Form.imp A B => Nat.succ (Nat.max (formRank A) (formRank B))
   | Form.and A B => Nat.succ (Nat.max (formRank A) (formRank B))
   | Form.or  A B => Nat.succ (Nat.max (formRank A) (formRank B))
@@ -34,7 +34,7 @@ def formRank : Form → ℕ
 /-- A simple numeric code for formulas. It is only used to prove surjectivity of `formEnum`. -/
 def formCode : Form → ℕ
   | Form.atom n => IPC.pairEncodeBin 0 n
-  | Form.I => IPC.pairEncodeBin 1 0
+  | Form.bot => IPC.pairEncodeBin 1 0
   | Form.imp A B => IPC.pairEncodeBin 2 (IPC.pairEncodeBin (formCode A) (formCode B))
   | Form.and A B => IPC.pairEncodeBin 3 (IPC.pairEncodeBin (formCode A) (formCode B))
   | Form.or  A B => IPC.pairEncodeBin 4 (IPC.pairEncodeBin (formCode A) (formCode B))
@@ -47,13 +47,13 @@ def formAt : ℕ → ℕ → Form
       let p := IPC.pairDecodeBin c
       match p.1 with
       | 0 => Form.atom p.2
-      | 1 => Form.I
-      | _ => Form.I
+      | 1 => Form.bot
+      | _ => Form.bot
   | d + 1, c =>
       let p := IPC.pairDecodeBin c
       match p.1 with
       | 0 => Form.atom p.2
-      | 1 => Form.I
+      | 1 => Form.bot
       | 2 =>
           let q := IPC.pairDecodeBin p.2
           Form.imp (formAt d q.1) (formAt d q.2)
@@ -63,7 +63,7 @@ def formAt : ℕ → ℕ → Form
       | 4 =>
           let q := IPC.pairDecodeBin p.2
           Form.or (formAt d q.1) (formAt d q.2)
-      | _ => Form.I
+      | _ => Form.bot
 
 
 
@@ -73,7 +73,7 @@ lemma formAt_code_of_rank_le (A : Form) :
   | atom n =>
       intro d hd
       cases d <;> simp [formAt, formCode]
-  | «I» =>
+  | bot =>
       intro d hd
       cases d <;> simp [formAt, formCode]
   | imp A B ihA ihB =>
@@ -217,7 +217,7 @@ lemma ctxEnum_surjective : Function.Surjective ctxEnum := by
 /-! ## Derivation enumeration -/
 
 /-- A fixed valid derivation code used as the default output of the proof checker. -/
-def defaultDerCode : DerCode := (∅, Form.imp Form.I Form.I)
+def defaultDerCode : DerCode := (∅, Form.imp Form.bot Form.bot)
 
 lemma defaultDerCode_sound : DerOK defaultDerCode := by
   unfold defaultDerCode DerOK
@@ -323,7 +323,7 @@ def rawProofLeafAt (c : ℕ) : RawProof :=
       let q := decodeCtxThreeForms p.2
       RawProof.case q.1 q.2.1 q.2.2.1 q.2.2.2
   | _ =>
-      RawProof.k ∅ Form.I Form.I
+      RawProof.k ∅ Form.bot Form.bot
 
 /-- Decode raw proofs from a bounded tree height and a numeric payload. -/
 def rawProofAt : ℕ → ℕ → RawProof
@@ -434,7 +434,7 @@ lemma applyMP_sound {d₁ d₂ : DerCode} (hd₁ : DerOK d₁) (hd₂ : DerOK d�
           cases hF : F with
           | atom n =>
               simpa [applyMP, hF] using defaultDerCode_sound
-          | «I» =>
+          | bot =>
               simpa [applyMP, hF] using defaultDerCode_sound
           | imp A B =>
               by_cases hΓcode : ctxCode Γ₁ = ctxCode Γ₂
@@ -465,7 +465,7 @@ def rawProofDer : RawProof → DerCode
       (Γ, Form.imp (Form.imp A (Form.imp B C))
         (Form.imp (Form.imp A B) (Form.imp A C)))
   | RawProof.exf Γ A =>
-      (Γ, Form.imp Form.I A)
+      (Γ, Form.imp Form.bot A)
   | RawProof.mp t u =>
       applyMP (rawProofDer t) (rawProofDer u)
   | RawProof.pr1 Γ A B =>

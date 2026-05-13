@@ -1,4 +1,4 @@
-import Intuitionism.completeness
+import Intuitionism.EmptyCompleteness
 
 /-!
 # Finite-context version of the concrete completeness theorem
@@ -265,7 +265,7 @@ theorem semantic_completeness_concrete_finite_context
     (∀ {X : Type} (M : emodel X) (w : X),
         w ∈ M.W → (w ⊩{M} (↑Γ : Set Form)) → (w ⊩{M} A)) →
       ((↑Γ : Set Form) ⊢ᵢ A) := by
-  let V : VeldmanFan E := TodoB.Vconcrete E
+  let V : VeldmanFan E := ImplicationSubfan.Vconcrete E
   let ctx : ImpHardData.CompletenessCtx V := ctxConcrete hBar E
   intro hSem
   exact ImpHardData.finite_context_completeness'

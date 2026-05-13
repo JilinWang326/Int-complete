@@ -134,14 +134,14 @@ def leU {E : Enumerations} (V : VeldmanFan E) (a b : Branch V) : Prop :=
 
 /-- The universal modified Kripke model U built from branches.
 - The model frame corresponds to Definition 1.2 (modified Kripke-model) + the specialized construction in §3.41;
-- The treatment of atoms and I corresponds to Definition 1.3 (the atomic forcing/validity clause includes “or m ⊩ I”).
+- The treatment of atoms and the falsity constant `⊥` corresponds to Definition 1.3 via the explosion predicate.
 -/
 def U {E : Enumerations} (V : VeldmanFan E) : emodel (Branch V) := by
   refine
   { W := Set.univ
     R := leU V
     val := fun p a => (Form.atom p) ∈ Gamma V a
-    ival := fun a => (Form.I) ∈ Gamma V a
+    explodes := fun a => (Form.bot) ∈ Gamma V a
     refl := by
       intro w hw
       dsimp [leU]
@@ -152,9 +152,9 @@ def U {E : Enumerations} (V : VeldmanFan E) : emodel (Branch V) := by
     mono := by
       intro p w1 w2 hw1 hw2 hv hR
       exact hR hv
-    monoI := by
-      intro w1 w2 hw1 hw2 hI hR
-      exact hR hI }
+    explodes_mono := by
+      intro w1 w2 hw1 hw2 hexplodes hR
+      exact hR hexplodes }
 
 --------------------------------------------------------------------------------
 
@@ -636,13 +636,13 @@ theorem implication_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules
 
 
 
-/-- If Γ is a theory and `I ∈ Γ`, then every formula belongs to Γ (explosion). -/
-lemma mem_of_I {Γ : Set Form} (hT : IsTheory Γ) (A : Form) :
-    (Form.I ∈ Γ) → A ∈ Γ := by
-  intro hI
-  have hIprf : Γ ⊢ᵢ Form.I := prf_of_mem (Γ := Γ) hI
-  have hexf  : Γ ⊢ᵢ (Form.I ⊃ A) := prf.exf (Γ := Γ) (p := A)
-  have hAprf : Γ ⊢ᵢ A := prf.mp hexf hIprf
+/-- If Γ is a theory and `⊥ ∈ Γ`, then every formula belongs to Γ. -/
+lemma mem_of_bot {Γ : Set Form} (hT : IsTheory Γ) (A : Form) :
+    (Form.bot ∈ Γ) → A ∈ Γ := by
+  intro hbot
+  have hbot_prf : Γ ⊢ᵢ Form.bot := prf_of_mem (Γ := Γ) hbot
+  have hexf  : Γ ⊢ᵢ (Form.bot ⊃ A) := prf.exf (Γ := Γ) (p := A)
+  have hAprf : Γ ⊢ᵢ A := prf.mp hexf hbot_prf
   exact hT hAprf
 
 
@@ -671,19 +671,19 @@ theorem truth_lemma {E : Enumerations} (V : VeldmanFan E) (hR : GammaRules V)
   | atom n =>
       constructor
       · intro hF
-        have h' : (Form.atom n) ∈ Gamma V a ∨ Form.I ∈ Gamma V a := by
+        have h' : (Form.atom n) ∈ Gamma V a ∨ Form.bot ∈ Gamma V a := by
           simpa [Forces, U] using hF
         cases h' with
         | inl hn =>
             exact hn
-        | inr hI =>
+        | inr hbot =>
             have hTa : IsTheory (Gamma V a) := hR.gamma_isTheory a
-            exact mem_of_I (Γ := Gamma V a) hTa (Form.atom n) hI
+            exact mem_of_bot (Γ := Gamma V a) hTa (Form.atom n) hbot
       · intro hn
-        have : (Form.atom n) ∈ Gamma V a ∨ Form.I ∈ Gamma V a := Or.inl hn
+        have : (Form.atom n) ∈ Gamma V a ∨ Form.bot ∈ Gamma V a := Or.inl hn
         simpa [Forces, U] using this
 
-  | «I» =>
+  | bot =>
       simp [Forces, U]
 
   | imp P Q ihP ihQ =>

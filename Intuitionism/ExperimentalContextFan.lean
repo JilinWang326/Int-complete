@@ -1,4 +1,4 @@
-import Intuitionism.completeness_context
+import Intuitionism.FiniteContextLifting
 import Intuitionism.ConcreteEnumerations
 
 /-!
@@ -17,8 +17,6 @@ The concrete subfan below forces digit `1` at scheduler times `⟪n,m,0⟫` when
 of `Γ`; the rootward induction is the same One/Forced/Context/Split analysis as
 in the implication subfan.
 -/
-
-set_option maxHeartbeats 0
 
 open NatSeq
 open fin_seq
@@ -249,32 +247,32 @@ def decM (t : ℕ) : ℕ := (IPC.schedDecode t).2.1
 /-- At a `k0`-time, this Boolean says that the Γ-subfan must take digit `1`. -/
 def needsΓb {Γ : Set Form} (E : Enumerations) (hΓ : IPC.VeldmanContext Γ)
     (t : ℕ) : Bool :=
-  decide (TodoB.VC.decK t = IPC.k0) && hΓ.beta (E.W (TodoB.VC.decN t)) (decM t)
+  decide (ImplicationSubfan.VC.decK t = IPC.k0) && hΓ.beta (E.W (ImplicationSubfan.VC.decN t)) (decM t)
 
 lemma needsΓb_k0_of_true {Γ : Set Form} (E : Enumerations)
     (hΓ : IPC.VeldmanContext Γ) (t : ℕ) :
-    needsΓb E hΓ t = true → TodoB.VC.decK t = IPC.k0 := by
+    needsΓb E hΓ t = true → ImplicationSubfan.VC.decK t = IPC.k0 := by
   intro h
   have hAnd := Bool.and_eq_true_iff.mp h
   exact (_root_.decide_eq_true_iff).1 hAnd.1
 
 lemma needsΓb_mem_of_true {Γ : Set Form} (E : Enumerations)
     (hΓ : IPC.VeldmanContext Γ) (t : ℕ) :
-    needsΓb E hΓ t = true → E.W (TodoB.VC.decN t) ∈ Γ := by
+    needsΓb E hΓ t = true → E.W (ImplicationSubfan.VC.decN t) ∈ Γ := by
   intro h
   have hAnd := Bool.and_eq_true_iff.mp h
-  exact hΓ.beta_sound (E.W (TodoB.VC.decN t)) (decM t) hAnd.2
+  exact hΓ.beta_sound (E.W (ImplicationSubfan.VC.decN t)) (decM t) hAnd.2
 
 lemma needsΓb_true_of {Γ : Set Form} (E : Enumerations)
     (hΓ : IPC.VeldmanContext Γ) (t : ℕ)
-    (hk0 : TodoB.VC.decK t = IPC.k0)
-    (hβ : hΓ.beta (E.W (TodoB.VC.decN t)) (decM t) = true) :
+    (hk0 : ImplicationSubfan.VC.decK t = IPC.k0)
+    (hβ : hΓ.beta (E.W (ImplicationSubfan.VC.decN t)) (decM t) = true) :
     needsΓb E hΓ t = true := by
   exact Bool.and_eq_true_iff.mpr ⟨(_root_.decide_eq_true_iff).2 hk0, hβ⟩
 
 lemma eq_one_of_needsΓb_true_of_decK_ne_k0 {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) (t q : ℕ)
-    (hk0ne : TodoB.VC.decK t ≠ IPC.k0) :
+    (hk0ne : ImplicationSubfan.VC.decK t ≠ IPC.k0) :
     needsΓb E hΓ t = true → q = 1 := by
   intro hb
   exact False.elim (hk0ne (needsΓb_k0_of_true E hΓ t hb))
@@ -308,21 +306,21 @@ instance {Γ : Set Form} (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) (s : f
 def TΓlaw {Γ : Set Form} (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) :
     fin_seq → ℕ :=
   fun s =>
-    match (TodoB.Vconcrete E).S s with
+    match (ImplicationSubfan.Vconcrete E).S s with
     | 0 => if StepsOKΓb E hΓ s then 0 else 1
     | _ + 1 => 1
 
 lemma TΓlaw_eq_zero_iff {Γ : Set Form} (E : Enumerations)
     (hΓ : IPC.VeldmanContext Γ) (s : fin_seq) :
     TΓlaw E hΓ s = 0 ↔
-      (TodoB.Vconcrete E).S s = 0 ∧ StepsOKΓ E hΓ s := by
+      (ImplicationSubfan.Vconcrete E).S s = 0 ∧ StepsOKΓ E hΓ s := by
   unfold TΓlaw StepsOKΓ StepsOKΓb
-  cases (TodoB.Vconcrete E).S s with
+  cases (ImplicationSubfan.Vconcrete E).S s with
   | zero => simp
   | succ n => simp
 
 lemma TΓ_le_S {Γ : Set Form} (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) :
-    ∀ s : fin_seq, TΓlaw E hΓ s = 0 → (TodoB.Vconcrete E).S s = 0 := by
+    ∀ s : fin_seq, TΓlaw E hΓ s = 0 → (ImplicationSubfan.Vconcrete E).S s = 0 := by
   intro s hs
   exact (TΓlaw_eq_zero_iff E hΓ s).1 hs |>.1
 
@@ -352,7 +350,7 @@ lemma StepsOKΓbUpTo_proof_irrel {Γ : Set Form} (E : Enumerations)
       · simp [StepsOKΓbUpTo, hneed, hrec]
       · simp [StepsOKΓbUpTo, hneed, hrec]
 
-lemma child_len_ge (s : fin_seq) (q : ℕ) : s.len ≤ (TodoB.child s q).len := by
+lemma child_len_ge (s : fin_seq) (q : ℕ) : s.len ≤ (ImplicationSubfan.child s q).len := by
   change s.len ≤ s.len + 1
   exact Nat.le_succ s.len
 
@@ -360,7 +358,7 @@ lemma StepsOKΓbUpTo_child_eq {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ)
     (s : fin_seq) (q : ℕ) :
     ∀ k (hk : k ≤ s.len),
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) k
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) k
           (Nat.le_trans hk (child_len_ge s q))
       = StepsOKΓbUpTo E hΓ s k hk := by
   intro k hk
@@ -368,33 +366,33 @@ lemma StepsOKΓbUpTo_child_eq {Γ : Set Form}
   | zero => simp [StepsOKΓbUpTo]
   | succ k ih =>
       have hk' : k ≤ s.len := Nat.le_of_succ_le hk
-      have hkChild : k.succ ≤ (TodoB.child s q).len := Nat.le_trans hk (child_len_ge s q)
+      have hkChild : k.succ ≤ (ImplicationSubfan.child s q).len := Nat.le_trans hk (child_len_ge s q)
       have hlt : k < s.len := Nat.lt_of_lt_of_le (Nat.lt_succ_self k) hk
-      have hltChild : k < (TodoB.child s q).len := Nat.lt_of_lt_of_le hlt (child_len_ge s q)
+      have hltChild : k < (ImplicationSubfan.child s q).len := Nat.lt_of_lt_of_le hlt (child_len_ge s q)
       let iS : Fin s.len := ⟨k, hlt⟩
-      let iC : Fin (TodoB.child s q).len := ⟨k, hltChild⟩
-      have hseq : (TodoB.child s q).seq iC = s.seq iS := by
-        simp [TodoB.child, fin_seq.extend, fin_seq.singleton, hlt, iS, iC]
+      let iC : Fin (ImplicationSubfan.child s q).len := ⟨k, hltChild⟩
+      have hseq : (ImplicationSubfan.child s q).seq iC = s.seq iS := by
+        simp [ImplicationSubfan.child, fin_seq.extend, fin_seq.singleton, hlt, iS, iC]
       simp [StepsOKΓbUpTo, ih hk', hseq, iS, iC]
 
 lemma StepsOKΓbUpTo_prefix_child {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ)
     (s : fin_seq) (q : ℕ) :
-    StepsOKΓbUpTo E hΓ (TodoB.child s q) (TodoB.child s q).len le_rfl = true →
+    StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) (ImplicationSubfan.child s q).len le_rfl = true →
     StepsOKΓbUpTo E hΓ s s.len le_rfl = true := by
   intro h
-  have hlen : (TodoB.child s q).len = s.len.succ := by
-    simp [TodoB.child, fin_seq.extend, fin_seq.singleton]
+  have hlen : (ImplicationSubfan.child s q).len = s.len.succ := by
+    simp [ImplicationSubfan.child, fin_seq.extend, fin_seq.singleton]
   have h' :
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len.succ (by simp [hlen]) = true := by
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len.succ (by simp [hlen]) = true := by
     simpa [hlen] using h
   have hdown :
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len
         (Nat.le_of_succ_le (by simp [hlen])) = true := by
-    exact StepsOKΓbUpTo_pred_true E hΓ (TodoB.child s q) s.len
+    exact StepsOKΓbUpTo_pred_true E hΓ (ImplicationSubfan.child s q) s.len
       (by simp [hlen]) h'
   have heq :
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len
         (Nat.le_trans (le_rfl : s.len ≤ s.len) (child_len_ge s q))
       = StepsOKΓbUpTo E hΓ s s.len le_rfl :=
     StepsOKΓbUpTo_child_eq E hΓ s q s.len le_rfl
@@ -405,47 +403,47 @@ lemma StepsOKΓ_child_of_StepsOK {Γ : Set Form}
     (s : fin_seq) (q : ℕ)
     (hS : StepsOKΓ E hΓ s)
     (hnew : needsΓb E hΓ s.len = true → q = 1) :
-    StepsOKΓ E hΓ (TodoB.child s q) := by
+    StepsOKΓ E hΓ (ImplicationSubfan.child s q) := by
   unfold StepsOKΓ at hS ⊢
   unfold StepsOKΓb at hS ⊢
-  have hlen : (TodoB.child s q).len = s.len + 1 := by
-    simp [TodoB.child, fin_seq.extend, fin_seq.singleton]
-  have hkfull : s.len.succ ≤ (TodoB.child s q).len := by rw [hlen]
+  have hlen : (ImplicationSubfan.child s q).len = s.len + 1 := by
+    simp [ImplicationSubfan.child, fin_seq.extend, fin_seq.singleton]
+  have hkfull : s.len.succ ≤ (ImplicationSubfan.child s q).len := by rw [hlen]
   have hPrefixEq :
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len (Nat.le_of_succ_le hkfull)
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len (Nat.le_of_succ_le hkfull)
       = StepsOKΓbUpTo E hΓ s s.len le_rfl := by
     calc
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len (Nat.le_of_succ_le hkfull)
-          = StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len (Nat.le_of_succ_le hkfull)
+          = StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len
               (Nat.le_trans le_rfl (child_len_ge s q)) :=
-            StepsOKΓbUpTo_proof_irrel E hΓ (TodoB.child s q) s.len _ _
+            StepsOKΓbUpTo_proof_irrel E hΓ (ImplicationSubfan.child s q) s.len _ _
       _ = StepsOKΓbUpTo E hΓ s s.len le_rfl :=
             StepsOKΓbUpTo_child_eq E hΓ s q s.len le_rfl
   have hPrefixTrue :
-      StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len (Nat.le_of_succ_le hkfull) = true := by
+      StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len (Nat.le_of_succ_le hkfull) = true := by
     rw [hPrefixEq]
     exact hS
   by_cases hb : needsΓb E hΓ s.len
   · have hq : q = 1 := hnew hb
     subst q
-    have hLast : (TodoB.child s 1).seq
+    have hLast : (ImplicationSubfan.child s 1).seq
         ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩ = 1 := by
       have hidx :
-          (⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩ : Fin (TodoB.child s 1).len)
+          (⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩ : Fin (ImplicationSubfan.child s 1).len)
             = ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ := by
         apply Fin.ext; rfl
       calc
-        (TodoB.child s 1).seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩
-            = (TodoB.child s 1).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ := by rw [hidx]
+        (ImplicationSubfan.child s 1).seq ⟨s.len, Nat.lt_of_lt_of_le (Nat.lt_succ_self s.len) hkfull⟩
+            = (ImplicationSubfan.child s 1).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ := by rw [hidx]
         _ = 1 := by
             change (extend s (singleton 1)).seq ⟨s.len, Nat.lt_add_of_pos_right (Nat.succ_pos 0)⟩ = 1
-            exact TodoB.VC.extend_singleton_last s 1
+            exact ImplicationSubfan.VC.extend_singleton_last s 1
     have hmain :
-        StepsOKΓbUpTo E hΓ (TodoB.child s 1) s.len.succ hkfull = true := by
+        StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s 1) s.len.succ hkfull = true := by
       simp [StepsOKΓbUpTo, hb, hPrefixTrue, hLast]
     simpa [hlen] using hmain
   · have hmain :
-        StepsOKΓbUpTo E hΓ (TodoB.child s q) s.len.succ hkfull = true := by
+        StepsOKΓbUpTo E hΓ (ImplicationSubfan.child s q) s.len.succ hkfull = true := by
       simp [StepsOKΓbUpTo, hb, hPrefixTrue]
     simpa [hlen] using hmain
 
@@ -484,7 +482,7 @@ lemma StepsOKΓ_finitize_digit_eq_one {Γ : Set Form}
 theorem TΓlaw_is_fan_law {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) :
     is_fan_law (TΓlaw E hΓ) := by
-  let V : VeldmanFan E := TodoB.Vconcrete E
+  let V : VeldmanFan E := ImplicationSubfan.Vconcrete E
   refine And.intro ?spread ?bound
   · refine And.intro ?empty ?ext
     · have hS0 : V.S empty_seq = 0 := Sigma_empty (V := V)
@@ -496,44 +494,44 @@ theorem TΓlaw_is_fan_law {Γ : Set Form}
         have hSs : V.S s = 0 := by
           simpa [V] using ((TΓlaw_eq_zero_iff E hΓ s).1 hs0 |>.1)
         have hOKs : StepsOKΓ E hΓ s := (TΓlaw_eq_zero_iff E hΓ s).1 hs0 |>.2
-        let E0 : TodoB.VC.Enumerations := TodoB.toConcreteEnum E
-        let st : TodoB.VC.State := TodoB.VC.runState E0 s
-        let q : ℕ := if needsΓb E hΓ s.len then 1 else TodoB.VC.chooseNext E0 st
+        let E0 : ImplicationSubfan.VC.Enumerations := ImplicationSubfan.toConcreteEnum E
+        let st : ImplicationSubfan.VC.State := ImplicationSubfan.VC.runState E0 s
+        let q : ℕ := if needsΓb E hΓ s.len then 1 else ImplicationSubfan.VC.chooseNext E0 st
         have ht : st.t = s.len := by
-          simpa [st, E0] using (TodoB.runState_t (E0 := E0) (s := s))
-        have hAllowed : TodoB.VC.AllowedStepb E0 st q = true := by
+          simpa [st, E0] using (ImplicationSubfan.runState_t (E0 := E0) (s := s))
+        have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st q = true := by
           by_cases hneed : needsΓb E hΓ s.len = true
           · have hq : q = 1 := by simp [q, hneed]
-            have hk0s : TodoB.VC.decK s.len = IPC.k0 := needsΓb_k0_of_true E hΓ s.len hneed
-            have hk0t : TodoB.VC.decK st.t = IPC.k0 := by simpa [ht] using hk0s
+            have hk0s : ImplicationSubfan.VC.decK s.len = IPC.k0 := needsΓb_k0_of_true E hΓ s.len hneed
+            have hk0t : ImplicationSubfan.VC.decK st.t = IPC.k0 := by simpa [ht] using hk0s
             rw [hq]
-            exact TodoB.AllowedStepb_k0_one E0 st hk0t
-          · have hq : q = TodoB.VC.chooseNext E0 st := by simp [q, hneed]
-            simpa [hq] using TodoB.VC.Allowed_chooseNext E0 st
-        have hSsSigma : TodoB.VC.Sigma E0 s = 0 := by
-          simpa [V, TodoB.Vconcrete, E0] using hSs
-        have hSigmaChildSigma : TodoB.VC.Sigma E0 (TodoB.child s q) = 0 :=
-          TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := q) hSsSigma
-            (by simpa [TodoB.VC.runState, st] using hAllowed)
-        have hSigmaChild : V.S (TodoB.child s q) = 0 := by
-          simpa [V, TodoB.Vconcrete, E0] using hSigmaChildSigma
+            exact ImplicationSubfan.AllowedStepb_k0_one E0 st hk0t
+          · have hq : q = ImplicationSubfan.VC.chooseNext E0 st := by simp [q, hneed]
+            simpa [hq] using ImplicationSubfan.VC.Allowed_chooseNext E0 st
+        have hSsSigma : ImplicationSubfan.VC.Sigma E0 s = 0 := by
+          simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs
+        have hSigmaChildSigma : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s q) = 0 :=
+          ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := q) hSsSigma
+            (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+        have hSigmaChild : V.S (ImplicationSubfan.child s q) = 0 := by
+          simpa [V, ImplicationSubfan.Vconcrete, E0] using hSigmaChildSigma
         have hnew : needsΓb E hΓ s.len = true → q = 1 := by
           intro hneed; simp [q, hneed]
-        have hOKchild : StepsOKΓ E hΓ (TodoB.child s q) :=
+        have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s q) :=
           StepsOKΓ_child_of_StepsOK E hΓ s q hOKs hnew
-        have hTchild : TΓlaw E hΓ (TodoB.child s q) = 0 :=
-          (TΓlaw_eq_zero_iff E hΓ (TodoB.child s q)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-        exact ⟨q, by simpa [TodoB.child] using hTchild⟩
+        have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s q) = 0 :=
+          (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s q)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+        exact ⟨q, by simpa [ImplicationSubfan.child] using hTchild⟩
       · rintro ⟨q, hq0⟩
-        have hq0' : TΓlaw E hΓ (TodoB.child s q) = 0 := by simpa [TodoB.child] using hq0
-        have hSChild : V.S (TodoB.child s q) = 0 := by
-          simpa [V] using ((TΓlaw_eq_zero_iff E hΓ (TodoB.child s q)).1 hq0' |>.1)
+        have hq0' : TΓlaw E hΓ (ImplicationSubfan.child s q) = 0 := by simpa [ImplicationSubfan.child] using hq0
+        have hSChild : V.S (ImplicationSubfan.child s q) = 0 := by
+          simpa [V] using ((TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s q)).1 hq0' |>.1)
         have hSs : V.S s = 0 := by
           have hspread : is_spread_law V.S := (fan_law_is_spread_law V.S V.hS)
           exact (hspread.2 s).2 ⟨q, hSChild⟩
         have hOKs : StepsOKΓ E hΓ s :=
           StepsOKΓbUpTo_prefix_child E hΓ s q
-            ((TΓlaw_eq_zero_iff E hΓ (TodoB.child s q)).1 hq0' |>.2)
+            ((TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s q)).1 hq0' |>.2)
         exact (TΓlaw_eq_zero_iff E hΓ s).2 (by simpa [V] using ⟨hSs, hOKs⟩)
   · intro s hs0
     have hSs : V.S s = 0 := by
@@ -541,9 +539,9 @@ theorem TΓlaw_is_fan_law {Γ : Set Form}
     rcases (V.hS.2 s hSs) with ⟨n, hn⟩
     refine ⟨n, ?_⟩
     intro m hm0
-    have hm0' : TΓlaw E hΓ (TodoB.child s m) = 0 := by simpa [TodoB.child] using hm0
-    have hmS : V.S (TodoB.child s m) = 0 := by
-      simpa [V] using ((TΓlaw_eq_zero_iff E hΓ (TodoB.child s m)).1 hm0' |>.1)
+    have hm0' : TΓlaw E hΓ (ImplicationSubfan.child s m) = 0 := by simpa [ImplicationSubfan.child] using hm0
+    have hmS : V.S (ImplicationSubfan.child s m) = 0 := by
+      simpa [V] using ((TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s m)).1 hm0' |>.1)
     exact hn m hmS
 
 /-- Every branch of the Γ-subfan contains the external context `Γ`. -/
@@ -551,8 +549,8 @@ lemma gamma_ok_concrete {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ)
     (hT : is_fan_law (TΓlaw E hΓ)) :
     ∀ b : fan (TΓlaw E hΓ) hT,
-      Γ ⊆ Gamma (TodoB.Vconcrete E)
-        (toBranchOfSubfan (V := TodoB.Vconcrete E) (hT := hT)
+      Γ ⊆ Gamma (ImplicationSubfan.Vconcrete E)
+        (toBranchOfSubfan (V := ImplicationSubfan.Vconcrete E) (hT := hT)
           (hsub := TΓ_le_S E hΓ) b) := by
   intro b B hB
   rcases hΓ.beta_complete B hB with ⟨m, hm⟩
@@ -560,10 +558,10 @@ lemma gamma_ok_concrete {Γ : Set Form}
   let t : ℕ := IPC.schedEncode ⟨n, m, IPC.k0⟩
   have hdec : IPC.schedDecode t = ⟨n, m, IPC.k0⟩ := by
     simpa [t] using (IPC.schedDecode_encode ⟨n, m, IPC.k0⟩)
-  have hk0 : TodoB.VC.decK t = IPC.k0 := by
-    simp [TodoB.VC.decK, hdec]
-  have hdecN : TodoB.VC.decN t = n := by
-    simp [TodoB.VC.decN, hdec]
+  have hk0 : ImplicationSubfan.VC.decK t = IPC.k0 := by
+    simp [ImplicationSubfan.VC.decK, hdec]
+  have hdecN : ImplicationSubfan.VC.decN t = n := by
+    simp [ImplicationSubfan.VC.decN, hdec]
   have hdecM : decM t = m := by
     simp [decM, hdec]
   have hneed : needsΓb E hΓ t = true := by
@@ -575,243 +573,243 @@ lemma gamma_ok_concrete {Γ : Set Form}
   have hbDigit : b.1 t = 1 :=
     StepsOKΓ_finitize_digit_eq_one E hΓ b.1 t hOKpref hneed
   let s0 : fin_seq := finitize b.1 t
-  have hs0 : finitize b.1 (t + 1) = TodoB.child s0 1 := by
-    have hchild : finitize b.1 (t + 1) = TodoB.child (finitize b.1 t) (b.1 t) :=
-      TodoB.finitize_succ_eq_child (bseq := b.1) (t := t)
+  have hs0 : finitize b.1 (t + 1) = ImplicationSubfan.child s0 1 := by
+    have hchild : finitize b.1 (t + 1) = ImplicationSubfan.child (finitize b.1 t) (b.1 t) :=
+      ImplicationSubfan.finitize_succ_eq_child (bseq := b.1) (t := t)
     simpa [s0, hbDigit] using hchild
-  have hk0s0 : TodoB.VC.decK s0.len = IPC.k0 := by
+  have hk0s0 : ImplicationSubfan.VC.decK s0.len = IPC.k0 := by
     simpa [s0, fin_seq.finitize_len] using hk0
-  have hdecNs0 : TodoB.VC.decN s0.len = n := by
+  have hdecNs0 : ImplicationSubfan.VC.decN s0.len = n := by
     simpa [s0, fin_seq.finitize_len] using hdecN
-  have hmemChild : E.W n ∈ (TodoB.Vconcrete E).F (TodoB.child s0 1) := by
-    have hF := TodoB.StepRules.Vconcrete_F_child_k0_one (E := E) (s := s0) hk0s0
+  have hmemChild : E.W n ∈ (ImplicationSubfan.Vconcrete E).F (ImplicationSubfan.child s0 1) := by
+    have hF := ImplicationSubfan.StepRules.Vconcrete_F_child_k0_one (E := E) (s := s0) hk0s0
     rw [hF]
     simp [hdecNs0]
   refine ⟨t + 1, ?_⟩
   have hcoe :
-      (toBranchOfSubfan (V := TodoB.Vconcrete E) (hT := hT)
+      (toBranchOfSubfan (V := ImplicationSubfan.Vconcrete E) (hT := hT)
         (hsub := TΓ_le_S E hΓ) b).1 = b.1 := rfl
   simpa [Gamma, hcoe, hs0, hn] using hmemChild
 
 /-- Concrete local case analysis for the Γ-subfan. -/
 theorem stepRulesΓ {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) (A : Form) :
-    ContextGammaRules.IndStepRulesΓ (TodoB.Vconcrete E) Γ A (TΓlaw E hΓ) := by
-  let V : VeldmanFan E := TodoB.Vconcrete E
+    ContextGammaRules.IndStepRulesΓ (ImplicationSubfan.Vconcrete E) Γ A (TΓlaw E hΓ) := by
+  let V : VeldmanFan E := ImplicationSubfan.Vconcrete E
   refine ⟨?_⟩
   intro s hs0
   have hSs : V.S s = 0 := by
     simpa [V] using ((TΓlaw_eq_zero_iff E hΓ s).1 hs0 |>.1)
   have hOKs : StepsOKΓ E hΓ s := (TΓlaw_eq_zero_iff E hΓ s).1 hs0 |>.2
-  let E0 : TodoB.VC.Enumerations := TodoB.toConcreteEnum E
-  let st : TodoB.VC.State := TodoB.VC.runState E0 s
+  let E0 : ImplicationSubfan.VC.Enumerations := ImplicationSubfan.toConcreteEnum E
+  let st : ImplicationSubfan.VC.State := ImplicationSubfan.VC.runState E0 s
   have ht : st.t = s.len := by
-    simpa [st, E0] using (TodoB.runState_t (E0 := E0) (s := s))
-  by_cases hk0 : TodoB.VC.decK s.len = IPC.k0
-  · have hk0st : TodoB.VC.decK st.t = IPC.k0 := by simpa [ht] using hk0
-    by_cases hF : TodoB.VC.Forced0b E0 st = true
+    simpa [st, E0] using (ImplicationSubfan.runState_t (E0 := E0) (s := s))
+  by_cases hk0 : ImplicationSubfan.VC.decK s.len = IPC.k0
+  · have hk0st : ImplicationSubfan.VC.decK st.t = IPC.k0 := by simpa [ht] using hk0
+    by_cases hF : ImplicationSubfan.VC.Forced0b E0 st = true
     · refine Or.inr (Or.inl ?_)
-      let X : Form := E.W (TodoB.VC.decN s.len)
+      let X : Form := E.W (ImplicationSubfan.VC.decN s.len)
       refine ⟨1, X, ?_, ?_, ?_⟩
-      · have hAllowed : TodoB.VC.AllowedStepb E0 st 1 = true :=
-          TodoB.StepRules.AllowedStepb_k0_force_only_1 E0 st hk0st (by simpa [st] using hF)
-        have hSigmaChild : V.S (TodoB.child s 1) = 0 := by
-          have : TodoB.VC.Sigma E0 (TodoB.child s 1) = 0 :=
-            TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
-              (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-              (by simpa [TodoB.VC.runState, st] using hAllowed)
-          simpa [V, TodoB.Vconcrete, E0] using this
-        have hOKchild : StepsOKΓ E hΓ (TodoB.child s 1) :=
+      · have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 1 = true :=
+          ImplicationSubfan.StepRules.AllowedStepb_k0_force_only_1 E0 st hk0st (by simpa [st] using hF)
+        have hSigmaChild : V.S (ImplicationSubfan.child s 1) = 0 := by
+          have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 1) = 0 :=
+            ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
+              (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+              (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+          simpa [V, ImplicationSubfan.Vconcrete, E0] using this
+        have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 1) :=
           StepsOKΓ_child_of_StepsOK E hΓ s 1 hOKs (by intro _; rfl)
-        have hTchild : TΓlaw E hΓ (TodoB.child s 1) = 0 :=
-          (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-        simpa [TodoB.child] using hTchild
+        have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 1) = 0 :=
+          (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+        simpa [ImplicationSubfan.child] using hTchild
       · subst X
-        simpa [V] using (TodoB.StepRules.Vconcrete_F_child_k0_one (E := E) (s := s) hk0)
-      · have hprf : ((↑(st.Fs) : Set Form) ⊢ᵢ (E0.W (TodoB.VC.decN st.t))) :=
-          TodoB.Forced0b_prf (E0 := E0) (st := st) (by simpa [st] using hF)
+        simpa [V] using (ImplicationSubfan.StepRules.Vconcrete_F_child_k0_one (E := E) (s := s) hk0)
+      · have hprf : ((↑(st.Fs) : Set Form) ⊢ᵢ (E0.W (ImplicationSubfan.VC.decN st.t))) :=
+          ImplicationSubfan.Forced0b_prf (E0 := E0) (st := st) (by simpa [st] using hF)
         have hFs : (↑(V.F s) : Set Form) = (↑st.Fs : Set Form) := by
-          simp [V, TodoB.Vconcrete, TodoB.VC.FS, st, E0]
-        have hX : E0.W (TodoB.VC.decN st.t) = X := by
+          simp [V, ImplicationSubfan.Vconcrete, ImplicationSubfan.VC.FS, st, E0]
+        have hX : E0.W (ImplicationSubfan.VC.decN st.t) = X := by
           subst X
-          simp [E0, TodoB.toConcreteEnum, ht]
+          simp [E0, ImplicationSubfan.toConcreteEnum, ht]
         have hprfX : (↑st.Fs : Set Form) ⊢ᵢ X := by
           simpa [hX] using hprf
         have hΓX : (↑(V.F s) : Set Form) ⊢ᵢ X := by
           simpa [hFs] using hprfX
         simpa [V] using hΓX
 
-    · have hF' : TodoB.VC.Forced0b E0 st = false := by
-        cases h0 : TodoB.VC.Forced0b E0 st with
+    · have hF' : ImplicationSubfan.VC.Forced0b E0 st = false := by
+        cases h0 : ImplicationSubfan.VC.Forced0b E0 st with
         | true => exact False.elim (hF h0)
         | false => simp
       by_cases hneed : needsΓb E hΓ s.len = true
       · refine Or.inr (Or.inr (Or.inl ?_))
-        let X : Form := E.W (TodoB.VC.decN s.len)
+        let X : Form := E.W (ImplicationSubfan.VC.decN s.len)
         refine ⟨1, X, ?_, ?_, ?_⟩
-        · have hAllowed : TodoB.VC.AllowedStepb E0 st 1 = true :=
-            (TodoB.StepRules.AllowedStepb_k0_allow_0_1 E0 st hk0st hF').2
-          have hSigmaChild : V.S (TodoB.child s 1) = 0 := by
-            have : TodoB.VC.Sigma E0 (TodoB.child s 1) = 0 :=
-              TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
-                (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-                (by simpa [TodoB.VC.runState, st] using hAllowed)
-            simpa [V, TodoB.Vconcrete, E0] using this
-          have hOKchild : StepsOKΓ E hΓ (TodoB.child s 1) :=
+        · have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 1 = true :=
+            (ImplicationSubfan.StepRules.AllowedStepb_k0_allow_0_1 E0 st hk0st hF').2
+          have hSigmaChild : V.S (ImplicationSubfan.child s 1) = 0 := by
+            have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 1) = 0 :=
+              ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
+                (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+                (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+            simpa [V, ImplicationSubfan.Vconcrete, E0] using this
+          have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 1) :=
             StepsOKΓ_child_of_StepsOK E hΓ s 1 hOKs (by intro _; rfl)
-          have hTchild : TΓlaw E hΓ (TodoB.child s 1) = 0 :=
-            (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-          simpa [TodoB.child] using hTchild
+          have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 1) = 0 :=
+            (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+          simpa [ImplicationSubfan.child] using hTchild
         · subst X
-          simpa [TodoB.VC.FS, E0] using (TodoB.StepRules.FS_child_k0_one (E := E) (s := s) hk0)
+          simpa [ImplicationSubfan.VC.FS, E0] using (ImplicationSubfan.StepRules.FS_child_k0_one (E := E) (s := s) hk0)
         · subst X
           exact needsΓb_mem_of_true E hΓ s.len hneed
       · refine Or.inl ?_
         refine ⟨0, ?_, ?_⟩
-        · have hAllowed : TodoB.VC.AllowedStepb E0 st 0 = true :=
-            (TodoB.StepRules.AllowedStepb_k0_allow_0_1 E0 st hk0st hF').1
-          have hSigmaChild : V.S (TodoB.child s 0) = 0 := by
-            have : TodoB.VC.Sigma E0 (TodoB.child s 0) = 0 :=
-              TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
-                (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-                (by simpa [TodoB.VC.runState, st] using hAllowed)
-            simpa [V, TodoB.Vconcrete, E0] using this
+        · have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 0 = true :=
+            (ImplicationSubfan.StepRules.AllowedStepb_k0_allow_0_1 E0 st hk0st hF').1
+          have hSigmaChild : V.S (ImplicationSubfan.child s 0) = 0 := by
+            have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 0) = 0 :=
+              ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
+                (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+                (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+            simpa [V, ImplicationSubfan.Vconcrete, E0] using this
           have hnew : needsΓb E hΓ s.len = true → (0 : ℕ) = 1 := by
             intro hb; exact False.elim (hneed hb)
-          have hOKchild : StepsOKΓ E hΓ (TodoB.child s 0) :=
+          have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 0) :=
             StepsOKΓ_child_of_StepsOK E hΓ s 0 hOKs hnew
-          have hTchild : TΓlaw E hΓ (TodoB.child s 0) = 0 :=
-            (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-          simpa [TodoB.child] using hTchild
-        · change (TodoB.VC.runState E0 (TodoB.child s 0)).Fs = (TodoB.VC.runState E0 s).Fs
-          simpa [E0] using (TodoB.StepRules.Fs_child_k0_zero_eq (E := E) (s := s) hk0)
+          have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 0) = 0 :=
+            (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+          simpa [ImplicationSubfan.child] using hTchild
+        · change (ImplicationSubfan.VC.runState E0 (ImplicationSubfan.child s 0)).Fs = (ImplicationSubfan.VC.runState E0 s).Fs
+          simpa [E0] using (ImplicationSubfan.StepRules.Fs_child_k0_zero_eq (E := E) (s := s) hk0)
 
-  · by_cases hk1 : TodoB.VC.decK s.len = IPC.k1
+  · by_cases hk1 : ImplicationSubfan.VC.decK s.len = IPC.k1
     · refine Or.inl ?_
       refine ⟨0, ?_, ?_⟩
-      · have hk1st : TodoB.VC.decK st.t = IPC.k1 := by simpa [ht] using hk1
-        have hAllowed : TodoB.VC.AllowedStepb E0 st 0 = true :=
-          TodoB.StepRules.AllowedStepb_k1_only_0 E0 st hk1st
-        have hSigmaChild : V.S (TodoB.child s 0) = 0 := by
-          have : TodoB.VC.Sigma E0 (TodoB.child s 0) = 0 :=
-            TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
-              (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-              (by simpa [TodoB.VC.runState, st] using hAllowed)
-          simpa [V, TodoB.Vconcrete, E0] using this
+      · have hk1st : ImplicationSubfan.VC.decK st.t = IPC.k1 := by simpa [ht] using hk1
+        have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 0 = true :=
+          ImplicationSubfan.StepRules.AllowedStepb_k1_only_0 E0 st hk1st
+        have hSigmaChild : V.S (ImplicationSubfan.child s 0) = 0 := by
+          have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 0) = 0 :=
+            ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
+              (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+              (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+          simpa [V, ImplicationSubfan.Vconcrete, E0] using this
         have hnew : needsΓb E hΓ s.len = true → (0 : ℕ) = 1 := by
           intro hb
           exact False.elim (hk0 (needsΓb_k0_of_true E hΓ s.len hb))
-        have hOKchild : StepsOKΓ E hΓ (TodoB.child s 0) :=
+        have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 0) :=
           StepsOKΓ_child_of_StepsOK E hΓ s 0 hOKs hnew
-        have hTchild : TΓlaw E hΓ (TodoB.child s 0) = 0 :=
-          (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-        simpa [TodoB.child] using hTchild
-      · change (TodoB.VC.runState E0 (TodoB.child s 0)).Fs = (TodoB.VC.runState E0 s).Fs
-        simpa [E0] using (TodoB.StepRules.Fs_child_k1_zero_eq (E := E) (s := s) hk1)
+        have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 0) = 0 :=
+          (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+        simpa [ImplicationSubfan.child] using hTchild
+      · change (ImplicationSubfan.VC.runState E0 (ImplicationSubfan.child s 0)).Fs = (ImplicationSubfan.VC.runState E0 s).Fs
+        simpa [E0] using (ImplicationSubfan.StepRules.Fs_child_k1_zero_eq (E := E) (s := s) hk1)
 
-    · have hk2 : TodoB.VC.decK s.len = IPC.k2 :=
-        TodoB.StepRules.decK_eq_k2_of_ne_k0_k1 (t := s.len) hk0 hk1
-      have hk2st : TodoB.VC.decK st.t = IPC.k2 := by simpa [ht] using hk2
+    · have hk2 : ImplicationSubfan.VC.decK s.len = IPC.k2 :=
+        ImplicationSubfan.StepRules.decK_eq_k2_of_ne_k0_k1 (t := s.len) hk0 hk1
+      have hk2st : ImplicationSubfan.VC.decK st.t = IPC.k2 := by simpa [ht] using hk2
       have caseOne_zero
           (hNoSplitSt :
-            ¬ (∃ P Q : Form, E0.W (TodoB.VC.decN st.t) = P ⋎ Q ∧ st.prev2 = 1)) :
+            ¬ (∃ P Q : Form, E0.W (ImplicationSubfan.VC.decN st.t) = P ⋎ Q ∧ st.prev2 = 1)) :
           ContextGammaRules.CaseOne V (TΓlaw E hΓ) s := by
         refine ⟨0, ?_, ?_⟩
-        · have hAllowed : TodoB.VC.AllowedStepb E0 st 0 = true :=
-            TodoB.StepRules.AllowedStepb_k2_default_0 E0 st hNoSplitSt hk2st
-          have hSigmaChild : V.S (TodoB.child s 0) = 0 := by
-            have : TodoB.VC.Sigma E0 (TodoB.child s 0) = 0 :=
-              TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
-                (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-                (by simpa [TodoB.VC.runState, st] using hAllowed)
-            simpa [V, TodoB.Vconcrete, E0] using this
+        · have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 0 = true :=
+            ImplicationSubfan.StepRules.AllowedStepb_k2_default_0 E0 st hNoSplitSt hk2st
+          have hSigmaChild : V.S (ImplicationSubfan.child s 0) = 0 := by
+            have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 0) = 0 :=
+              ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 0)
+                (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+                (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+            simpa [V, ImplicationSubfan.Vconcrete, E0] using this
           have hnew : needsΓb E hΓ s.len = true → (0 : ℕ) = 1 := by
             intro hb
             exact False.elim (hk0 (needsΓb_k0_of_true E hΓ s.len hb))
-          have hOKchild : StepsOKΓ E hΓ (TodoB.child s 0) :=
+          have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 0) :=
             StepsOKΓ_child_of_StepsOK E hΓ s 0 hOKs hnew
-          have hTchild : TΓlaw E hΓ (TodoB.child s 0) = 0 :=
-            (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-          simpa [TodoB.child] using hTchild
-        · change (TodoB.VC.runState E0 (TodoB.child s 0)).Fs = (TodoB.VC.runState E0 s).Fs
-          simpa [E0] using (TodoB.StepRules.Fs_child_k2_zero_eq (E := E) (s := s) hk2)
-      cases hWcase : E.W (TodoB.VC.decN s.len) with
+          have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 0) = 0 :=
+            (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 0)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+          simpa [ImplicationSubfan.child] using hTchild
+        · change (ImplicationSubfan.VC.runState E0 (ImplicationSubfan.child s 0)).Fs = (ImplicationSubfan.VC.runState E0 s).Fs
+          simpa [E0] using (ImplicationSubfan.StepRules.Fs_child_k2_zero_eq (E := E) (s := s) hk2)
+      cases hWcase : E.W (ImplicationSubfan.VC.decN s.len) with
       | atom n =>
           refine Or.inl ?_
           exact caseOne_zero (by
             intro h
             rcases h with ⟨P, Q, hWst, _⟩
-            simp [E0, TodoB.toConcreteEnum, ht, hWcase] at hWst)
-      | «I» =>
+            simp [E0, ImplicationSubfan.toConcreteEnum, ht, hWcase] at hWst)
+      | bot =>
           refine Or.inl ?_
           exact caseOne_zero (by
             intro h
             rcases h with ⟨P, Q, hWst, _⟩
-            simp [E0, TodoB.toConcreteEnum, ht, hWcase] at hWst)
+            simp [E0, ImplicationSubfan.toConcreteEnum, ht, hWcase] at hWst)
       | imp R S =>
           refine Or.inl ?_
           exact caseOne_zero (by
             intro h
             rcases h with ⟨P, Q, hWst, _⟩
-            simp [E0, TodoB.toConcreteEnum, ht, hWcase] at hWst)
+            simp [E0, ImplicationSubfan.toConcreteEnum, ht, hWcase] at hWst)
       | and R S =>
           refine Or.inl ?_
           exact caseOne_zero (by
             intro h
             rcases h with ⟨P, Q, hWst, _⟩
-            simp [E0, TodoB.toConcreteEnum, ht, hWcase] at hWst)
+            simp [E0, ImplicationSubfan.toConcreteEnum, ht, hWcase] at hWst)
       | or P Q =>
         by_cases hp : st.prev2 = 1
         · have hSplit : ContextGammaRules.CaseSplit V (TΓlaw E hΓ) s := by
             refine ⟨P, Q, ?_, ?_, ?_, ?_, ?_⟩
-            · have hWst : E0.W (TodoB.VC.decN st.t) = P ⋎ Q := by
-                simpa [E0, TodoB.toConcreteEnum, ht] using hWcase
-              have hAllowed : TodoB.VC.AllowedStepb E0 st 1 = true :=
-                TodoB.StepRules.AllowedStepb_k2_split_q1 E0 st P Q hk2st hWst (by simpa [st] using hp)
-              have hSigmaChild : V.S (TodoB.child s 1) = 0 := by
-                have : TodoB.VC.Sigma E0 (TodoB.child s 1) = 0 :=
-                  TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
-                    (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-                    (by simpa [TodoB.VC.runState, st] using hAllowed)
-                simpa [V, TodoB.Vconcrete, E0] using this
-              have hOKchild : StepsOKΓ E hΓ (TodoB.child s 1) :=
+            · have hWst : E0.W (ImplicationSubfan.VC.decN st.t) = P ⋎ Q := by
+                simpa [E0, ImplicationSubfan.toConcreteEnum, ht] using hWcase
+              have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 1 = true :=
+                ImplicationSubfan.StepRules.AllowedStepb_k2_split_q1 E0 st P Q hk2st hWst (by simpa [st] using hp)
+              have hSigmaChild : V.S (ImplicationSubfan.child s 1) = 0 := by
+                have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 1) = 0 :=
+                  ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 1)
+                    (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+                    (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+                simpa [V, ImplicationSubfan.Vconcrete, E0] using this
+              have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 1) :=
                 StepsOKΓ_child_of_StepsOK E hΓ s 1 hOKs (by intro _; rfl)
-              have hTchild : TΓlaw E hΓ (TodoB.child s 1) = 0 :=
-                (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-              simpa [TodoB.child] using hTchild
-            · have hWst : E0.W (TodoB.VC.decN st.t) = P ⋎ Q := by
-                simpa [E0, TodoB.toConcreteEnum, ht] using hWcase
-              have hAllowed : TodoB.VC.AllowedStepb E0 st 2 = true :=
-                TodoB.StepRules.AllowedStepb_k2_split_q2 E0 st P Q hk2st hWst (by simpa [st] using hp)
-              have hSigmaChild : V.S (TodoB.child s 2) = 0 := by
-                have : TodoB.VC.Sigma E0 (TodoB.child s 2) = 0 :=
-                  TodoB.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 2)
-                    (by simpa [V, TodoB.Vconcrete, E0] using hSs)
-                    (by simpa [TodoB.VC.runState, st] using hAllowed)
-                simpa [V, TodoB.Vconcrete, E0] using this
+              have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 1) = 0 :=
+                (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 1)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+              simpa [ImplicationSubfan.child] using hTchild
+            · have hWst : E0.W (ImplicationSubfan.VC.decN st.t) = P ⋎ Q := by
+                simpa [E0, ImplicationSubfan.toConcreteEnum, ht] using hWcase
+              have hAllowed : ImplicationSubfan.VC.AllowedStepb E0 st 2 = true :=
+                ImplicationSubfan.StepRules.AllowedStepb_k2_split_q2 E0 st P Q hk2st hWst (by simpa [st] using hp)
+              have hSigmaChild : V.S (ImplicationSubfan.child s 2) = 0 := by
+                have : ImplicationSubfan.VC.Sigma E0 (ImplicationSubfan.child s 2) = 0 :=
+                  ImplicationSubfan.Sigma_extend_of_Allowed (E0 := E0) (s := s) (q := 2)
+                    (by simpa [V, ImplicationSubfan.Vconcrete, E0] using hSs)
+                    (by simpa [ImplicationSubfan.VC.runState, st] using hAllowed)
+                simpa [V, ImplicationSubfan.Vconcrete, E0] using this
               have hnew : needsΓb E hΓ s.len = true → (2 : ℕ) = 1 := by
                 intro hb
                 exact False.elim (hk0 (needsΓb_k0_of_true E hΓ s.len hb))
-              have hOKchild : StepsOKΓ E hΓ (TodoB.child s 2) :=
+              have hOKchild : StepsOKΓ E hΓ (ImplicationSubfan.child s 2) :=
                 StepsOKΓ_child_of_StepsOK E hΓ s 2 hOKs hnew
-              have hTchild : TΓlaw E hΓ (TodoB.child s 2) = 0 :=
-                (TΓlaw_eq_zero_iff E hΓ (TodoB.child s 2)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
-              simpa [TodoB.child] using hTchild
-            · simpa [V, TodoB.Vconcrete, TodoB.VC.FS, E0, TodoB.child] using
-                (TodoB.StepRules.Fs_child_k2_split_one_eq (E := E) (s := s) (A := P) (B := Q) hk2 hWcase (by simpa [st, E0] using hp))
-            · simpa [V, TodoB.Vconcrete, TodoB.VC.FS, E0, TodoB.child] using
-                (TodoB.StepRules.Fs_child_k2_split_two_eq (E := E) (s := s) (A := P) (B := Q) hk2 hWcase (by simpa [st, E0] using hp))
-            · have hWmem : E0.W (TodoB.VC.decN (TodoB.VC.runState E0 s).t) ∈ (TodoB.VC.runState E0 s).Fs :=
+              have hTchild : TΓlaw E hΓ (ImplicationSubfan.child s 2) = 0 :=
+                (TΓlaw_eq_zero_iff E hΓ (ImplicationSubfan.child s 2)).2 (by simpa [V] using ⟨hSigmaChild, hOKchild⟩)
+              simpa [ImplicationSubfan.child] using hTchild
+            · simpa [V, ImplicationSubfan.Vconcrete, ImplicationSubfan.VC.FS, E0, ImplicationSubfan.child] using
+                (ImplicationSubfan.StepRules.Fs_child_k2_split_one_eq (E := E) (s := s) (A := P) (B := Q) hk2 hWcase (by simpa [st, E0] using hp))
+            · simpa [V, ImplicationSubfan.Vconcrete, ImplicationSubfan.VC.FS, E0, ImplicationSubfan.child] using
+                (ImplicationSubfan.StepRules.Fs_child_k2_split_two_eq (E := E) (s := s) (A := P) (B := Q) hk2 hWcase (by simpa [st, E0] using hp))
+            · have hWmem : E0.W (ImplicationSubfan.VC.decN (ImplicationSubfan.VC.runState E0 s).t) ∈ (ImplicationSubfan.VC.runState E0 s).Fs :=
                 IPC.VeldmanConcrete.W_mem_Fs_of_k2_prev2_eq_one
                   (E := E0) (s := s)
                   (by simpa [st] using hk2st)
                   (by simpa [st] using hp)
-              have hWst : E0.W (TodoB.VC.decN (TodoB.VC.runState E0 s).t) = P ⋎ Q := by
-                have hrun_t : (TodoB.VC.runState E0 s).t = s.len := by
+              have hWst : E0.W (ImplicationSubfan.VC.decN (ImplicationSubfan.VC.runState E0 s).t) = P ⋎ Q := by
+                have hrun_t : (ImplicationSubfan.VC.runState E0 s).t = s.len := by
                   simpa [st] using ht
                 rw [hrun_t]
-                simpa [E0, TodoB.toConcreteEnum] using hWcase
-              simpa [V, TodoB.Vconcrete, TodoB.VC.FS, E0, hWst] using hWmem
+                simpa [E0, ImplicationSubfan.toConcreteEnum] using hWcase
+              simpa [V, ImplicationSubfan.Vconcrete, ImplicationSubfan.VC.FS, E0, hWst] using hWmem
           exact Or.inr (Or.inr (Or.inr hSplit))
         · refine Or.inl ?_
           exact caseOne_zero (by
@@ -822,15 +820,15 @@ theorem stepRulesΓ {Γ : Set Form}
 /-- The concrete Γ-subfan package required by the abstract arbitrary-context theorem. -/
 def contextSubfanData_concrete {Γ : Set Form}
     (E : Enumerations) (hΓ : IPC.VeldmanContext Γ) (A : Form) :
-    ImpHardData.ContextSubfanData (TodoB.Vconcrete E) Γ A := by
+    ImpHardData.ContextSubfanData (ImplicationSubfan.Vconcrete E) Γ A := by
   let T : fin_seq → ℕ := TΓlaw E hΓ
   have hT : is_fan_law T := by
     simpa [T] using (TΓlaw_is_fan_law E hΓ)
-  have hsub : ∀ s : fin_seq, T s = 0 → (TodoB.Vconcrete E).S s = 0 := by
+  have hsub : ∀ s : fin_seq, T s = 0 → (ImplicationSubfan.Vconcrete E).S s = 0 := by
     intro s hs
     simpa [T] using (TΓ_le_S E hΓ s hs)
-  let toB : fan T hT → Branch (TodoB.Vconcrete E) :=
-    toBranchOfSubfan (V := TodoB.Vconcrete E) (hT := hT) (hsub := hsub)
+  let toB : fan T hT → Branch (ImplicationSubfan.Vconcrete E) :=
+    toBranchOfSubfan (V := ImplicationSubfan.Vconcrete E) (hT := hT) (hsub := hsub)
   refine
   { T := T
     hT := hT
@@ -843,10 +841,10 @@ def contextSubfanData_concrete {Γ : Set Form}
     have h := gamma_ok_concrete (E := E) (hΓ := hΓ) (hT := hT) b
     simpa [T, toB, hsub] using h
   · intro s hs0 hall
-    have hRules : ContextGammaRules.IndStepRulesΓ (TodoB.Vconcrete E) Γ A T := by
+    have hRules : ContextGammaRules.IndStepRulesΓ (ImplicationSubfan.Vconcrete E) Γ A T := by
       simpa [T] using (stepRulesΓ (E := E) (hΓ := hΓ) (A := A))
     exact ContextGammaRules.ind_step_of_rules
-      (V := TodoB.Vconcrete E) (Γ := Γ) (A := A) (T := T)
+      (V := ImplicationSubfan.Vconcrete E) (Γ := Γ) (A := A) (T := T)
       hRules s hs0 hall
 
 end ContextSubfanConcrete
@@ -867,7 +865,7 @@ theorem semantic_completeness_concrete_set_context
         w ∈ M.W → (w ⊩{M} Γ) → (w ⊩{M} A)) →
       (Γ ⊢ᵢ A) := by
   intro hSem
-  let V : VeldmanFan E := TodoB.Vconcrete E
+  let V : VeldmanFan E := ImplicationSubfan.Vconcrete E
   let ctx : ImpHardData.CompletenessCtx V := ctxConcrete hBar E
   let data : ImpHardData.ContextSubfanData V Γ A :=
     ContextSubfanConcrete.contextSubfanData_concrete
@@ -879,11 +877,12 @@ private def uliftModelSet {X : Type} (M : emodel X) : emodel (ULift.{u, 0} X) wh
   W := { w | w.down ∈ M.W }
   R w v := M.R w.down v.down
   val p w := M.val p w.down
-  ival w := M.ival w.down
+  explodes w := M.explodes w.down
   refl w hw := M.refl w.down hw
   trans w hw v hv z hz hwv hvz := M.trans w.down hw v.down hv z.down hz hwv hvz
   mono p w1 w2 hw1 hw2 hv hR := M.mono p w1.down w2.down hw1 hw2 hv hR
-  monoI w1 w2 hw1 hw2 hI hR := M.monoI w1.down w2.down hw1 hw2 hI hR
+  explodes_mono w1 w2 hw1 hw2 hexplodes hR :=
+    M.explodes_mono w1.down w2.down hw1 hw2 hexplodes hR
 
 private lemma forces_uliftModelSet_iff {X : Type} (M : emodel X) :
     ∀ (P : Form) (w : ULift.{u, 0} X),
@@ -893,7 +892,7 @@ private lemma forces_uliftModelSet_iff {X : Type} (M : emodel X) :
   | atom n =>
       intro w
       rfl
-  | «I» =>
+  | bot =>
       intro w
       rfl
   | imp A B ihA ihB =>

@@ -1,3 +1,3 @@
-import Intuitionism.sketch
+import Intuitionism.UniversalModel
 
 -- def hello := "world"

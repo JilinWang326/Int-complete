@@ -1,16 +1,16 @@
 import Mathlib
-import Intuitionism.sketch
+import Intuitionism.UniversalModel
 import Intuitionism.VeldmanConcrete
 
 /-!
-# TODO A: formalise the Γα rules for the concrete Veldman fan
+# Concrete Γ-rules for the concrete Veldman fan
 
 This file proves (for the *concrete* fan defined in `VeldmanConcrete.lean`):
 
 * `Gamma V a` is a **theory** (closed under intuitionistic derivability), and
 * `Gamma V a` is **disjunctive**.
 
-These are the two fields of `GammaRules` in `sketch.lean`.
+These are the two fields of `GammaRules` in `UniversalModel.lean`.
 
 We do **not** change any existing definitions; we only add lemmas and package them.
 -/
@@ -19,13 +19,13 @@ open NatSeq
 open fin_seq
 open IPC
 open scoped IPC
-namespace TodoA
+namespace ConcreteGammaRules
 
 
 
 namespace Concrete
 
-/-- Convert the `Enumerations` from `sketch.lean` to the one used in `VeldmanConcrete.lean`.
+/-- Convert the `Enumerations` from `UniversalModel.lean` to the one used in `VeldmanConcrete.lean`.
 The payload is the same; only the namespace differs. -/
 def Enumerations.toConcrete (E : _root_.Enumerations) : IPC.VeldmanConcrete.Enumerations :=
 { W := E.W
@@ -39,7 +39,7 @@ def Enumerations.toConcrete (E : _root_.Enumerations) : IPC.VeldmanConcrete.Enum
     intro Γ A h
     simpa [IPC.VeldmanConcrete.DerOK, DerOK] using (E.d_complete Γ A h) }
 
-/-- The concrete fan packaged using the `VeldmanFan` record from `sketch.lean`. -/
+/-- The concrete fan packaged using the `VeldmanFan` record from `UniversalModel.lean`. -/
 def mkConcreteFan (E : _root_.Enumerations) : VeldmanFan E := by
   let E' : IPC.VeldmanConcrete.Enumerations := Concrete.Enumerations.toConcrete E
   refine
@@ -435,7 +435,7 @@ end prf
 end IPC
 
 
-/-! ## Main theorem: TODO A packaged as `GammaRules` -/
+/-! ## Concrete Γ-rules packaged as `GammaRules` -/
 
 namespace Main
 
@@ -829,7 +829,7 @@ lemma gamma_disjunctive_concrete (E0 : _root_.Enumerations) :
         IPC.VeldmanConcrete.FS] using this
 
 
-/-- Package TODO A as an instance of `GammaRules` for the concrete fan. -/
+/-- Package the concrete Γ-rules as an instance of `GammaRules` for the concrete fan. -/
 theorem gammaRules_concrete (E0 : _root_.Enumerations) : GammaRules (V := V E0) := by
   refine ⟨?_, ?_⟩
   · exact gamma_isTheory_concrete (E0 := E0)
@@ -837,4 +837,4 @@ theorem gammaRules_concrete (E0 : _root_.Enumerations) : GammaRules (V := V E0) 
 
 end Main
 
-end TodoA
+end ConcreteGammaRules

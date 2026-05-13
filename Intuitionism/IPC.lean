@@ -22,21 +22,21 @@ namespace IPC
 
 universe u
 
-/-- Syntax for the propositional fragment of paper §1.1, with Veldman's distinguished constant `I`. -/
+/-- Syntax for the propositional fragment of paper §1.1, with Veldman's falsity constant `⊥`. -/
 inductive Form : Type
 | atom : Nat → Form
-| I : Form
+| bot : Form
 | imp : Form → Form → Form
 | and : Form → Form → Form
 | or  : Form → Form → Form
 deriving DecidableEq, Repr
 
 namespace Form
-def neg (A : Form) : Form := imp A I
+def neg (A : Form) : Form := imp A bot
 end Form
 
 scoped[IPC] prefix:100 "#" => Form.atom
-scoped[IPC] notation "I" => Form.I
+scoped[IPC] notation "⊥" => Form.bot
 scoped[IPC] infixr:60 " ⊃ " => Form.imp
 scoped[IPC] notation:70 p " & " q => Form.and p q
 scoped[IPC] infixr:65 " ⋎ " => Form.or
@@ -48,17 +48,17 @@ structure emodel (A : Type u) where
   W     : Set A
   R     : A → A → Prop
   val   : Nat → A → Prop
-  ival  : A → Prop
+  explodes  : A → Prop
   refl  : ∀ w, w ∈ W → R w w
   trans : ∀ w, w ∈ W → ∀ v, v ∈ W → ∀ u, u ∈ W → R w v → R v u → R w u
   mono  : ∀ p : Nat, ∀ w1 w2 : A, w1 ∈ W → w2 ∈ W → val p w1 → R w1 w2 → val p w2
-  monoI : ∀ w1 w2 : A, w1 ∈ W → w2 ∈ W → ival w1 → R w1 w2 → ival w2
+  explodes_mono : ∀ w1 w2 : A, w1 ∈ W → w2 ∈ W → explodes w1 → R w1 w2 → explodes w2
 
-/-- Forcing relation from paper §1.3. The atomic clause includes `∨ I`, exactly as in Veldman's modified semantics with exploding worlds. -/
+/-- Forcing relation from paper §1.3. The atomic clause includes the explosion predicate, exactly as in Veldman's modified semantics with exploding worlds. -/
 @[simp]
 def Forces {A : Type u} (M : emodel A) : Form → A → Prop
-| Form.atom p, v => M.val p v ∨ M.ival v
-| Form.I,      v => M.ival v
+| Form.atom p, v => M.val p v ∨ M.explodes v
+| Form.bot,      v => M.explodes v
 | Form.imp p q, v =>
     ∀ w, w ∈ M.W → v ∈ M.W → M.R v w → Forces M p w → Forces M q w
 | Form.and p q, v => Forces M p v ∧ Forces M q v
@@ -85,7 +85,7 @@ inductive prf : Set Form → Form → Prop
 | k    {Γ} {p q} : prf Γ (p ⊃ (q ⊃ p))
 | s    {Γ} {p q r} :
     prf Γ ((p ⊃ (q ⊃ r)) ⊃ ((p ⊃ q) ⊃ (p ⊃ r)))
-| exf  {Γ} {p} : prf Γ (I ⊃ p)
+| exf  {Γ} {p} : prf Γ (⊥ ⊃ p)
 | mp   {Γ} {p q} (hpq : prf Γ (p ⊃ q)) (hp : prf Γ p) : prf Γ q
 | pr1  {Γ} {p q} : prf Γ ((p & q) ⊃ p)
 | pr2  {Γ} {p q} : prf Γ ((p & q) ⊃ q)
@@ -201,10 +201,10 @@ lemma mono_r {A : Type u} {M : emodel A} :
       intro w1 w2 hw1 hw2 h hR
       cases h with
       | inl hv => exact Or.inl (M.mono n w1 w2 hw1 hw2 hv hR)
-      | inr hi => exact Or.inr (M.monoI w1 w2 hw1 hw2 hi hR)
-  | «I» =>
+      | inr hi => exact Or.inr (M.explodes_mono w1 w2 hw1 hw2 hi hR)
+  | bot =>
       intro w1 w2 hw1 hw2 h hR
-      exact M.monoI w1 w2 hw1 hw2 h hR
+      exact M.explodes_mono w1 w2 hw1 hw2 h hR
   | imp p q ihp ihq =>
       intro w1 w2 hw1 hw2 h h12 w3 hw3 hw2' h23 hpw3
       have h13 : M.R w1 w3 := M.trans w1 hw1 w2 hw2 w3 hw3 h12 h23
@@ -218,15 +218,15 @@ lemma mono_r {A : Type u} {M : emodel A} :
       | inl hp => exact Or.inl (ihp w1 w2 hw1 hw2 hp hR)
       | inr hq => exact Or.inr (ihq w1 w2 hw1 hw2 hq hR)
 
-/-- At exploding worlds (`ival`), every formula is forced. -/
+/-- At exploding worlds (`explodes`), every formula is forced. -/
 lemma forces_of_explodes {A : Type u} (M : emodel A) :
-  ∀ p : Form, ∀ w : A, w ∈ M.W → M.ival w → (w ⊩{M} p) := by
+  ∀ p : Form, ∀ w : A, w ∈ M.W → M.explodes w → (w ⊩{M} p) := by
   intro p
   induction p with
   | atom n =>
       intro w hw hi
       exact Or.inr hi
-  | «I» =>
+  | bot =>
       intro w hw hi
       exact hi
   | and p q ihp ihq =>
@@ -237,7 +237,7 @@ lemma forces_of_explodes {A : Type u} (M : emodel A) :
       exact Or.inl (ihp w hw hi)
   | imp p q ihp ihq =>
       intro w hw hi w' hw' hw'0 hww' hpw'
-      have hi' : M.ival w' := M.monoI w w' hw hw' hi hww'
+      have hi' : M.explodes w' := M.explodes_mono w w' hw hw' hi hww'
       exact ihq w' hw' hi'
 
 /-- Soundness for the modified semantics: if `Γ ⊢ᵢ p`, then `Γ ⊨ᵢ p`. This is the propositional analogue of Veldman Theorem 1.4. -/
@@ -256,8 +256,8 @@ theorem prf_sound {Γ : Set Form} {p : Form} (h : Γ ⊢ᵢ p) : Γ ⊨ᵢ p := 
       have hQ  := hPQ  w3 hw3 hw2 hw2w3 hP
       exact hQR w3 hw3 hw3 (M.refl w3 hw3) hQ
   | exf =>
-      intro w1 hw1 _ hww1 hI
-      exact forces_of_explodes M _ w1 hw1 hI
+      intro w1 hw1 _ hww1 hexplodes
+      exact forces_of_explodes M _ w1 hw1 hexplodes
   | mp hpq hp ihpq ihp =>
       -- apply implication at w itself using reflexivity
       exact ihpq w hw hw (M.refl w hw) ihp
@@ -310,7 +310,7 @@ def Disjunctive (Γ : Set Form) : Prop :=
 def SemiRegular (Γ : Set Form) : Prop :=
   IsTheory Γ ∧ Disjunctive Γ
 
-/-- Membership gives a proof by the axiom rule. -/
+/-- Membership gives a proof by the assumption rule. -/
 lemma prf_of_mem {Γ : Set Form} {p : Form} (hp : p ∈ Γ) : Γ ⊢ᵢ p := by
 
   exact (by

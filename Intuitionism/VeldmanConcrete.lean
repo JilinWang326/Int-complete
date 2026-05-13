@@ -512,7 +512,7 @@ lemma FStep_mono (E : Enumerations) (st : State) (q : ℕ) :
           · simp [hp]
       | atom n =>
           simp
-      | «I» =>
+      | bot =>
           simp
       | imp p q =>
           simp

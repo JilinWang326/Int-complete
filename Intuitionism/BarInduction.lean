@@ -4,7 +4,7 @@ open fin_seq
 
 namespace VeldmanConcrete
 
-/-- A handy cut rule for the Hilbert system (used in Todo C, k0-forced branch). -/
+/-- A handy cut rule for the Hilbert system (used in the k0-forced branch). -/
 lemma prf_cut {Γ : Set Form} {X A : Form} :
     (Γ ⊢ᵢ X) → ((Γ ⸴ X) ⊢ᵢ A) → (Γ ⊢ᵢ A) := by
   intro hX hXA
@@ -132,12 +132,12 @@ lemma decK_eq_k2_of_ne (t : ℕ) (h0 : decK t ≠ k0) (h1 : decK t ≠ k1) :
 end VeldmanConcrete
 end IPC
 /-!
-# Bar induction step for the concrete Veldman fan (Todo C)
+# Bar-induction step for the concrete Veldman fan
 
-This file provides the local bar-induction step needed in `sketch.lean`
+This file provides the local bar-induction step needed in `UniversalModel.lean`
 for the concrete Σ/F construction in `VeldmanConcrete.lean`.
 
-It does **not** depend on `sketch.lean`, so it can be safely imported there.
+It does **not** depend on `UniversalModel.lean`, so it can be safely imported there.
 -/
 
 open NatSeq
@@ -516,7 +516,7 @@ lemma W_mem_Fs_of_k2_prev2_eq_one
 
 /-! ## The main result: the concrete bar-induction step -/
 
-/-! **Todo C**: local induction step for the bar lemma, for the concrete Σ/F.
+/-! Local induction step for the bar lemma, for the concrete Σ/F.
 
 This is the propositional analogue of the closure step used in Veldman Lemma §3.43.
 

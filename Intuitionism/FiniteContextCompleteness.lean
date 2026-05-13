@@ -1,4 +1,4 @@
-import Intuitionism.completeness_context
+import Intuitionism.FiniteContextLifting
 import Intuitionism.ConcreteEnumerations
 
 
@@ -6,7 +6,7 @@ import Intuitionism.ConcreteEnumerations
 # Closed context completeness theorem
 
 This file uses the concrete context construction already present in
-`completeness_context.lean`, namely
+`FiniteContextLifting.lean`, namely
 
 * `ImpHardData.finite_context_completeness'`, and
 * `ConcreteCompleteness.semantic_completeness_concrete_finite_context`.
@@ -32,11 +32,12 @@ private def uliftModel {X : Type} (M : emodel X) : emodel (ULift.{u, 0} X) where
   W := { w | w.down ∈ M.W }
   R w v := M.R w.down v.down
   val p w := M.val p w.down
-  ival w := M.ival w.down
+  explodes w := M.explodes w.down
   refl w hw := M.refl w.down hw
   trans w hw v hv z hz hwv hvz := M.trans w.down hw v.down hv z.down hz hwv hvz
   mono p w1 w2 hw1 hw2 hval hrel := M.mono p w1.down w2.down hw1 hw2 hval hrel
-  monoI w1 w2 hw1 hw2 hival hrel := M.monoI w1.down w2.down hw1 hw2 hival hrel
+  explodes_mono w1 w2 hw1 hw2 hexplodes hrel :=
+    M.explodes_mono w1.down w2.down hw1 hw2 hexplodes hrel
 
 private lemma forces_uliftModel_iff {X : Type} (M : emodel X) :
     ∀ (P : Form) (w : ULift.{u, 0} X),
@@ -46,7 +47,7 @@ private lemma forces_uliftModel_iff {X : Type} (M : emodel X) :
   | atom n =>
       intro w
       rfl
-  | «I» =>
+  | bot =>
       intro w
       rfl
   | imp A B ihA ihB =>
@@ -100,7 +101,7 @@ Contextual semantic completeness for finite contexts, with the enumeration
 parameter closed.
 
 This is the theorem obtained by combining the concrete finite-context theorem
-from `completeness_context.lean` with the concrete enumeration instance from
+from `FiniteContextLifting.lean` with the concrete enumeration instance from
 `ConcreteEnumerations.lean`.
 -/
 theorem semantic_completeness_concrete_context_closed

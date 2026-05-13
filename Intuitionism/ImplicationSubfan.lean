@@ -1,15 +1,14 @@
-import Intuitionism.sketch
+import Intuitionism.UniversalModel
 import Intuitionism.VeldmanConcrete
 import Mathlib
 
 set_option maxRecDepth 2000
-set_option maxHeartbeats 0  -- Used only to diagnose stalled proofs; remove once the proof script is stable.
 /-!
-Todo B (propositional version): provide the `ImpHardData` needed for the implication-case
-of the truth lemma in `sketch.lean`, without changing the existing setup.
+Implication subfan for the propositional truth lemma: provide the `ImpHardData` needed for the implication-case
+of the truth lemma in `UniversalModel.lean`, without changing the existing setup.
 
 This file works *on top of* the existing files you provided:
-- `sketch.lean` (abstract completeness skeleton)
+- `UniversalModel.lean` (abstract completeness skeleton)
 - `VeldmanConcrete.lean` (concrete Σ / F construction)
 - `Enumeration.lean` (scheduler encoding/decoding)
 
@@ -30,7 +29,7 @@ open NatSeq
 open fin_seq
 open IPC
 
-namespace TodoB
+namespace ImplicationSubfan
 namespace VC
 open NatSeq fin_seq IPC
 
@@ -59,12 +58,12 @@ export IPC.VeldmanConcrete
   )
 end VC
 
-/-- The enumeration type from `sketch.lean` (root namespace version). -/
+/-- The enumeration type from `UniversalModel.lean` (root namespace version). -/
 abbrev ESk : Type := _root_.Enumerations
 /-- The enumeration type from `VeldmanConcrete.lean` (the `IPC.VeldmanConcrete` version). -/
 abbrev ECon : Type := VC.Enumerations
 
-/-- Copy the enumeration data from the abstract `sketch` namespace into the concrete namespace. -/
+/-- Copy the enumeration data from the abstract universal-model namespace into the concrete namespace. -/
 def toConcreteEnum (E : ESk) : ECon :=
 { W := E.W
 , d := E.d
@@ -72,9 +71,9 @@ def toConcreteEnum (E : ESk) : ECon :=
 , d_sound := E.d_sound
 , d_complete := E.d_complete }
 
-/-! ### The concrete fan as a `sketch.VeldmanFan` -/
+/-! ### The concrete fan as a `VeldmanFan` -/
 
-/-- The concrete fan obtained by taking `IPC.VeldmanConcrete.Sigma/FS` as the `S/F` fields of `sketch.VeldmanFan`. -/
+/-- The concrete fan obtained by taking `IPC.VeldmanConcrete.Sigma/FS` as the `S/F` fields of `VeldmanFan`. -/
 
 def Vconcrete (E : ESk) : _root_.VeldmanFan E := by
   let E0 : ECon := toConcreteEnum E
@@ -244,7 +243,7 @@ lemma Sigma_extend_of_Allowed (E0 : VC.Enumerations) (s : fin_seq) (q : ℕ) :
     simpa [VC.Admittedb, c, child] using hcAux_succ
   exact (VC.Sigma_eq_zero_iff E0 c).2 hcAd
 
-/-! ### The subfan law `T` (Todo B) -/
+/-! ### The subfan law `T` -/
 
 /-- Boolean test for the `k0`-case: the scheduled formula is already in `F(α↾(t+1))` or equals the distinguished context formula `W`. -/
 def needs1b {E : ESk} (V : _root_.VeldmanFan E) (a : Branch V) (W : Form) (t : ℕ) : Bool :=
@@ -1049,7 +1048,7 @@ lemma AllowedStepb_k2_default_0 (E0 : VC.Enumerations) (st : VC.State)
         simp [hk2, hk20, hk21, hcase, hp]
   | atom n =>
       simp [hk2, hk20, hk21, hcase]
-  | «I» =>
+  | bot =>
       simp [hk2, hk20, hk21, hcase]
   | imp P Q =>
       simp [hk2, hk20, hk21, hcase]
@@ -2180,14 +2179,14 @@ theorem stepRules
                 (VC.runState E0 (child s 0)).Fs = (VC.runState E0 s).Fs := by
               simpa [E0] using (Fs_child_k2_zero_eq (E := E) (s := s) hk2)
             simpa [V, Vconcrete, VC.FS, E0] using hFsRun
-            | «I» =>
+            | bot =>
           refine Or.inl ?_
           refine ⟨0, ?_, ?_⟩
           ·
             have hk2st : VC.decK st.t = IPC.k2 := by simpa [ht] using hk2
             have hk20 : (IPC.k2 : Fin 3) ≠ IPC.k0 := by decide
             have hk21 : (IPC.k2 : Fin 3) ≠ IPC.k1 := by decide
-            have hWst : E0.W (VC.decN st.t) = Form.I := by
+            have hWst : E0.W (VC.decN st.t) = Form.bot := by
               simpa [E0, toConcreteEnum, ht] using hW
 
             have hAllowed : VC.AllowedStepb E0 st 0 = true := by
@@ -2302,7 +2301,7 @@ theorem stepRules
 
 end StepRules
 
-/-! ### Final: `impDataConcrete` (Todo B) -/
+/-! ### Final: `impDataConcrete` -/
 /-- Package the concrete subfan construction as the `ImpHardData` required for the implication case of the truth lemma (paper §4.1, propositional fragment). -/
 def impDataConcrete (E : Enumerations) :
     ∀ (a : Branch (Vconcrete E)) (W Q : Form), ImpHardData (Vconcrete E) a W Q := by
@@ -2336,7 +2335,7 @@ def impDataConcrete (E : Enumerations) :
     subfan_ok := by
       intro b
       have h :=
-        TodoB.subfan_ok (E := E) (V := V) (a := a) (W := W)
+        ImplicationSubfan.subfan_ok (E := E) (V := V) (a := a) (W := W)
           (hV := rfl) (T := T) (hTdef := rfl) (hT := hT) b
 
       simpa [toB, hsub] using h
@@ -2351,4 +2350,4 @@ def impDataConcrete (E : Enumerations) :
         hRules s hs0 hall
   }
 
-end TodoB
+end ImplicationSubfan

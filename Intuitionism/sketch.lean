@@ -1,9 +1,5 @@
-import Mathlib
-import Intuitionism.fin_seq
+import Mathlib.Data.Finset.Insert
 import Intuitionism.fan
-import Intuitionism.IPC
-import Intuitionism.Enumeration
-import Intuitionism.VeldmanConcrete
 
 /-!
 # Abstract completeness skeleton

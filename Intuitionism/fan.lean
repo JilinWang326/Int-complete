@@ -1,5 +1,4 @@
-import Mathlib
-
+import Mathlib.Data.Finset.Defs
 import Intuitionism.fin_seq
 import Intuitionism.IPC
 

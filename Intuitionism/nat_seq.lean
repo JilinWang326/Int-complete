@@ -1,5 +1,4 @@
-
-import Mathlib
+import Mathlib.Order.MinMax
 
 /-- The ambient type of infinite natural sequences `α : ℕ → ℕ` from paper §3.1. -/
 def NatSeq := ℕ → ℕ

@@ -1,4 +1,3 @@
-import Mathlib
 import Intuitionism.nat_seq
 
 open NatSeq

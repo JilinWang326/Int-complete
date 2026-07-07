@@ -1,4 +1,3 @@
-import Mathlib
 import Intuitionism.sketch
 import Intuitionism.VeldmanConcrete
 

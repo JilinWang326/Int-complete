@@ -1,6 +1,5 @@
 import Intuitionism.sketch
 import Intuitionism.VeldmanConcrete
-import Mathlib
 
 set_option maxRecDepth 2000
 set_option maxHeartbeats 0  -- Used only to diagnose stalled proofs; remove once the proof script is stable.

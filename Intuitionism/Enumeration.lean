@@ -1,7 +1,6 @@
-import Mathlib
-import Intuitionism.fin_seq
-import Intuitionism.fan
-import Intuitionism.IPC
+import Mathlib.Tactic.Set
+import Mathlib.Data.Nat.BinaryRec
+import Mathlib.Data.Nat.Pairing
 
 /-!
 # Constructive scheduler for Veldman §3.31

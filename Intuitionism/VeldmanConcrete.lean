@@ -1,7 +1,5 @@
-import Mathlib
-import Intuitionism.fin_seq
+import Mathlib.Data.Finset.Insert
 import Intuitionism.fan
-import Intuitionism.IPC
 import Intuitionism.Enumeration
 
 /-!
@@ -964,4 +962,3 @@ def mkVeldmanFan (E : Enumerations) : VeldmanFan E := by
 
 end VeldmanConcrete
 end IPC
-

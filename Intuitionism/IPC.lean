@@ -1,5 +1,4 @@
-import Mathlib.Data.Set.Lattice
-import Mathlib.Data.Finset.Basic
+import Mathlib.Data.Set.Insert
 
 /-!
 # Propositional IPC and modified Kripke semantics

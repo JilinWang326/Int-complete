@@ -1,5 +1,5 @@
 import Intuitionism.completeness
-import Mathlib.Data.Nat.BitIndices
+import Mathlib.Data.Finset.Sort
 
 /-!
 # A closed constructive enumeration instance for the concrete Veldman construction
